@@ -1,0 +1,46 @@
+--- a/gcc/system.h
++++ b/gcc/system.h
+@@ -203,11 +203,6 @@
+ #endif
+ #endif
+ 
+-/* There are an extraordinary number of issues with <ctype.h>.
+-   The last straw is that it varies with the locale.  Use libiberty's
+-   replacement instead.  */
+-#include "safe-ctype.h"
+-
+ #include <sys/types.h>
+ 
+ #include <errno.h>
+@@ -245,6 +240,11 @@
+ # include <type_traits>
+ #endif
+ 
++/* There are an extraordinary number of issues with <ctype.h>.
++   The last straw is that it varies with the locale.  Use libiberty's
++   replacement instead.  */
++#include "safe-ctype.h"
++
+ /* Some of glibc's string inlines cause warnings.  Plus we'd rather
+    rely on (and therefore test) GCC's string builtins.  */
+ #define __NO_STRING_INLINES
+--- a/libcc1/libcc1plugin.cc
++++ b/libcc1/libcc1plugin.cc
+@@ -32,6 +32,7 @@
+ #undef PACKAGE_VERSION
+ 
+ #define INCLUDE_MEMORY
++#define INCLUDE_VECTOR
+ #include "gcc-plugin.h"
+ #include "system.h"
+ #include "coretypes.h"
+--- a/libcc1/libcp1plugin.cc
++++ b/libcc1/libcp1plugin.cc
+@@ -33,6 +33,7 @@
+ #undef PACKAGE_VERSION
+ 
+ #define INCLUDE_MEMORY
++#define INCLUDE_VECTOR
+ #include "gcc-plugin.h"
+ #include "system.h"
+ #include "coretypes.h"
