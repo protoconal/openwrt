@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 
+#include "qca955x.dtsi"
+
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
-
-#include "qca955x.dtsi"
+#include <dt-bindings/leds/common.h>
 
 / {
 	aliases {
@@ -11,40 +12,33 @@
 		led-failsafe = &led_system;
 		led-running = &led_system;
 		led-upgrade = &led_system;
-		label-mac-device = &eth1;
 	};
 
 	leds: leds {
 		compatible = "gpio-leds";
 
 		led_system: system {
-			label = "tp-link:green:system";
+			label = "green:system";
 			gpios = <&gpio 14 GPIO_ACTIVE_LOW>;
 			default-state = "on";
 		};
 
 		usb1 {
-			label = "tp-link:green:usb1";
+			label = "green:usb1";
 			gpios = <&gpio 19 GPIO_ACTIVE_LOW>;
 			trigger-sources = <&hub_port1>;
 			linux,default-trigger = "usbport";
 		};
 
 		usb2 {
-			label = "tp-link:green:usb2";
+			label = "green:usb2";
 			gpios = <&gpio 18 GPIO_ACTIVE_LOW>;
 			trigger-sources = <&hub_port0>;
 			linux,default-trigger = "usbport";
 		};
 
-		wlan2g {
-			label = "tp-link:green:wlan2g";
-			gpios = <&gpio 12 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "phy1tpt";
-		};
-
 		qss {
-			label = "tp-link:green:qss";
+			label = "green:qss";
 			gpios = <&gpio 15 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -81,23 +75,12 @@
 	status = "okay";
 };
 
-&uart {
-	status = "okay";
-};
-
 &usb_phy0 {
 	status = "okay";
 };
 
 &usb0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
 	status = "okay";
-
-	hub_port0: port@1 {
-		reg = <1>;
-		#trigger-source-cells = <0>;
-	};
 };
 
 &usb_phy1 {
@@ -105,20 +88,11 @@
 };
 
 &usb1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
 	status = "okay";
-
-	hub_port1: port@1 {
-		reg = <1>;
-		#trigger-source-cells = <0>;
-	};
 };
 
 &spi {
 	status = "okay";
-
-	num-cs = <1>;
 
 	flash@0 {
 		compatible = "jedec,spi-nor";
@@ -136,8 +110,9 @@
 &mdio0 {
 	status = "okay";
 
-	phy0: ethernet-phy@0 {
-		reg = <0>;
+	switch@1f {
+		compatible = "qca,ar8327";
+		reg = <0x1f>;
 
 		qca,ar8327-initvals = <
 			0x04 0x00080080 /* PORT0 PAD MODE CTRL */
@@ -149,16 +124,59 @@
 			0x7c 0x0000007e /* PORT0_STATUS */
 			0x94 0x0000007e /* PORT6 STATUS */
 			>;
+
+		leds {
+			led@0 {
+				reg = <0>;
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_WAN;
+				qca,led-mode = <0>;
+			};
+
+			led@3 {
+				reg = <3>;
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_LAN;
+				function-enumerator = <1>;
+				qca,led-mode = <0>;
+			};
+
+			led@6 {
+				reg = <6>;
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_LAN;
+				function-enumerator = <2>;
+				qca,led-mode = <0>;
+			};
+
+			led@9 {
+				reg = <9>;
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_LAN;
+				function-enumerator = <3>;
+				qca,led-mode = <0>;
+			};
+
+			led@12 {
+				reg = <12>;
+				color = <LED_COLOR_ID_GREEN>;
+				function = LED_FUNCTION_LAN;
+				function-enumerator = <4>;
+				qca,led-mode = <0>;
+			};
+		};
 	};
 };
 
 &eth0 {
 	status = "okay";
 
-	mtd-mac-address = <&uboot 0x1fc00>;
-	mtd-mac-address-increment = <1>;
-	phy-handle = <&phy0>;
 	pll-data = <0x56000000 0x00000101 0x00001616>;
+
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
 
 	gmac-config {
 		device = <&gmac>;
@@ -169,7 +187,6 @@
 &eth1 {
 	status = "okay";
 
-	mtd-mac-address = <&uboot 0x1fc00>;
 	pll-data = <0x03000101 0x00000101 0x00001616>;
 
 	fixed-link {
@@ -181,6 +198,8 @@
 &wmac {
 	status = "okay";
 
-	mtd-cal-data = <&art 0x1000>;
-	mtd-mac-address = <&uboot 0x1fc00>;
+	led {
+		led-sources = <12>;
+		led-active-low;
+	};
 };

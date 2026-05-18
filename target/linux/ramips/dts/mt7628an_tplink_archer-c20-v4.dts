@@ -1,4 +1,4 @@
-/dts-v1/;
+#include <dt-bindings/leds/common.h>
 
 #include "mt7628an_tplink_8m.dtsi"
 
@@ -17,39 +17,44 @@
 		compatible = "gpio-leds";
 
 		lan {
-			label = "archer-c20-v4:green:lan";
+			function = LED_FUNCTION_LAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 42 GPIO_ACTIVE_LOW>;
 		};
 
 		led_power: power {
-			label = "archer-c20-v4:green:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 2 GPIO_ACTIVE_LOW>;
 		};
 
 		wan {
-			label = "archer-c20-v4:green:wan";
+			function = LED_FUNCTION_WAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 43 GPIO_ACTIVE_LOW>;
 		};
 
 		wan_orange {
-			label = "archer-c20-v4:orange:wan";
+			function = LED_FUNCTION_WAN;
+			color = <LED_COLOR_ID_ORANGE>;
 			gpios = <&gpio 11 GPIO_ACTIVE_LOW>;
 		};
 
 		wlan5g {
-			label = "archer-c20-v4:green:wlan5g";
+			label = "green:wlan5g";
 			gpios = <&gpio 40 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "phy1tpt";
 		};
 
 		wlan2g {
-			label = "archer-c20-v4:green:wlan2g";
+			label = "green:wlan2g";
 			gpios = <&gpio 39 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "phy0tpt";
 		};
 
 		wps {
-			label = "archer-c20-v4:green:wps";
+			function = LED_FUNCTION_WPS;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 41 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -71,8 +76,24 @@
 	};
 };
 
+&ehci {
+	status = "disabled";
+};
+
+&ohci {
+	status = "disabled";
+};
+
 &wmac {
-	mtd-mac-address-increment = <(-2)>;
+	status = "okay";
+
+	nvmem-cells = <&eeprom_factory_20000>, <&macaddr_factory_f100 (-2)>;
+	nvmem-cell-names = "eeprom", "mac-address";
+};
+
+&ethernet {
+	nvmem-cells = <&macaddr_factory_f100 0>;
+	nvmem-cell-names = "mac-address";
 };
 
 &esw {
@@ -91,11 +112,11 @@
 };
 
 &pcie0 {
-	mt76@0,0 {
+	wifi@0,0 {
+		compatible = "mediatek,mt76";
 		reg = <0x0000 0 0 0 0>;
-		mediatek,mtd-eeprom = <&factory 0x28000>;
 		ieee80211-freq-limit = <5000000 6000000>;
-		mtd-mac-address = <&factory 0xf100>;
-		mtd-mac-address-increment = <(-1)>;
+		nvmem-cells = <&eeprom_factory_28000>, <&macaddr_factory_f100 (-1)>;
+		nvmem-cell-names = "eeprom", "mac-address";
 	};
 };

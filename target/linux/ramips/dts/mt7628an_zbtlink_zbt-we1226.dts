@@ -1,8 +1,8 @@
-/dts-v1/;
-#include <dt-bindings/input/input.h>
-#include <dt-bindings/gpio/gpio.h>
-
 #include "mt7628an.dtsi"
+
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	compatible = "zbtlink,zbt-we1226", "mediatek,mt7628an-soc";
@@ -33,22 +33,24 @@
 		compatible = "gpio-leds";
 
 		wan {
-			label = "zbt-we1226:green:wan";
+			function = LED_FUNCTION_WAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 39 GPIO_ACTIVE_LOW>;
 		};
 
 		lan1 {
-			label = "zbt-we1226:green:lan1";
+			label = "green:lan1";
 			gpios = <&gpio 43 GPIO_ACTIVE_LOW>;
 		};
 
 		lan2 {
-			label = "zbt-we1226:green:lan2";
+			label = "green:lan2";
 			gpios = <&gpio 42 GPIO_ACTIVE_LOW>;
 		};
 
 		led_wlan: wlan {
-			label = "zbt-we1226:green:wlan";
+			function = LED_FUNCTION_WLAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 44 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -86,10 +88,24 @@
 				read-only;
 			};
 
-			factory: partition@40000 {
+			partition@40000 {
 				label = "factory";
 				reg = <0x40000 0x10000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x400>;
+					};
+
+					macaddr_factory_2e: macaddr@2e {
+						reg = <0x2e 0x6>;
+					};
+				};
 			};
 
 			partition@50000 {
@@ -103,10 +119,14 @@
 
 &wmac {
 	status = "okay";
+
+	nvmem-cells = <&eeprom_factory_0>;
+	nvmem-cell-names = "eeprom";
 };
 
 &ethernet {
-	mtd-mac-address = <&factory 0x2e>;
+	nvmem-cells = <&macaddr_factory_2e>;
+	nvmem-cell-names = "mac-address";
 };
 
 &esw {

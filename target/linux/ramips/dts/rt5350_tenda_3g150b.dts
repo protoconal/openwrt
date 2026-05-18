@@ -1,5 +1,3 @@
-/dts-v1/;
-
 #include "rt5350.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
@@ -20,12 +18,12 @@
 		compatible = "gpio-leds";
 
 		led_ap: ap {
-			label = "3g150b:blue:ap";
+			label = "blue:ap";
 			gpios = <&gpio0 7 GPIO_ACTIVE_LOW>;
 		};
 
 		3g {
-			label = "3g150b:blue:3g";
+			label = "blue:3g";
 			gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
 			trigger-sources = <&ohci_port1>, <&ehci_port1>;
 			linux,default-trigger = "usbport";
@@ -33,8 +31,7 @@
 	};
 
 	keys {
-		compatible = "gpio-keys-polled";
-		poll-interval = <20>;
+		compatible = "gpio-keys";
 
 		reset {
 			label = "reset";
@@ -45,7 +42,6 @@
 
 	gpio_export {
 		compatible = "gpio-export";
-		#size-cells = <0>;
 
 		usb {
 			gpio-export,name = "usb";
@@ -80,10 +76,24 @@
 				read-only;
 			};
 
-			factory: partition@40000 {
+			partition@40000 {
 				label = "factory";
 				reg = <0x40000 0x10000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x200>;
+					};
+
+					macaddr_factory_4: macaddr@4 {
+						reg = <0x4 0x6>;
+					};
+				};
 			};
 
 			partition@50000 {
@@ -95,10 +105,6 @@
 	};
 };
 
-&gpio1 {
-	status = "okay";
-};
-
 &state_default {
 	gpio {
 		groups = "i2c", "jtag", "uartf", "led";
@@ -107,7 +113,8 @@
 };
 
 &ethernet {
-	mtd-mac-address = <&factory 0x4>;
+	nvmem-cells = <&macaddr_factory_4>;
+	nvmem-cell-names = "mac-address";
 };
 
 &esw {
@@ -115,14 +122,7 @@
 };
 
 &wmac {
-	ralink,mtd-eeprom = <&factory 0x0>;
 	ralink,led-polarity = <1>;
-};
-
-&ehci {
-	status = "okay";
-};
-
-&ohci {
-	status = "okay";
+	nvmem-cells = <&eeprom_factory_0>;
+	nvmem-cell-names = "eeprom";
 };

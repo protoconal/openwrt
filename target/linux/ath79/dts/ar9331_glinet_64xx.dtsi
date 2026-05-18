@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 
-#include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/input/input.h>
-
 #include "ar9331.dtsi"
 
-/ {
-	aliases {
-		serial0 = &uart;
-		label-mac-device = &wmac;
-	};
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 
+/ {
 	keys {
 		compatible = "gpio-keys";
 
@@ -25,14 +21,9 @@
 	leds {
 		compatible = "gpio-leds";
 
-		wlan {
-			label = "gl-inet:red:wlan";
-			gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "phy0tpt";
-		};
-
 		lan {
-			label = "gl-inet:green:lan";
+			function = LED_FUNCTION_LAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 13 GPIO_ACTIVE_HIGH>;
 		};
 	};
@@ -49,8 +40,6 @@
 &eth0 {
 	status = "okay";
 
-	mtd-mac-address = <&uboot 0x1fc00>;
-
 	gmac-config {
 		device = <&gmac>;
 
@@ -60,12 +49,6 @@
 };
 
 &eth1 {
-	status = "okay";
-
-	mtd-mac-address = <&uboot 0x1fc00>;
-};
-
-&uart {
 	status = "okay";
 };
 
@@ -82,6 +65,7 @@
 &wmac {
 	status = "okay";
 
-	mtd-cal-data = <&art 0x1000>;
-	mtd-mac-address = <&uboot 0x1fc00>;
+	led {
+		led-sources = <0>;
+	};
 };

@@ -1,5 +1,3 @@
-/dts-v1/;
-
 #include "rt3050.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
@@ -27,10 +25,24 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			uboot: partition@0 {
+			partition@0 {
 				label = "uboot";
 				reg = <0x0 0x50000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					eeprom_uboot_40000: eeprom@40000 {
+						reg = <0x40000 0x200>;
+					};
+
+					macaddr_uboot_40004: macaddr@40004 {
+						reg = <0x40004 0x6>;
+					};
+				};
 			};
 
 			partition@50000 {
@@ -44,7 +56,7 @@
 				reg = <0x7e0000 0x10000>;
 			};
 
-			factory: partition@7f0000 {
+			partition@7f0000 {
 				label = "factory";
 				reg = <0x7f0000 0x10000>;
 			};
@@ -53,57 +65,57 @@
 
 	rtl8366rb {
 		compatible = "realtek,rtl8366rb";
-		gpio-sda = <&gpio0 1 GPIO_ACTIVE_HIGH>;
-		gpio-sck = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+		sda-gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		sck-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
 	};
 
 	leds {
 		compatible = "gpio-leds";
 
 		internet {
-			label = "f5d8235-v2:blue:internet";
+			label = "blue:internet";
 			gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;
 		};
 
 		internet2 {
-			label = "f5d8235-v2:amber:internet";
+			label = "amber:internet";
 			gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
 		};
 
 		modem {
-			label = "f5d8235-v2:blue:modem";
+			label = "blue:modem";
 			gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
 		};
 
 		modem2 {
-			label = "f5d8235-v2:amber:modem";
+			label = "amber:modem";
 			gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
 		};
 
 		led_router: router {
-			label = "f5d8235-v2:blue:router";
+			label = "blue:router";
 			gpios = <&gpio0 9 GPIO_ACTIVE_LOW>;
 		};
 
 		storage {
-			label = "f5d8235-v2:blue:storage";
+			label = "blue:storage";
 			gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
 			trigger-sources = <&otg_port1>;
 			linux,default-trigger = "usbport";
 		};
 
 		storage2 {
-			label = "f5d8235-v2:amber:storage";
+			label = "amber:storage";
 			gpios = <&gpio0 22 GPIO_ACTIVE_LOW>;
 		};
 
 		security {
-			label = "f5d8235-v2:blue:security";
+			label = "blue:security";
 			gpios = <&gpio0 13 GPIO_ACTIVE_LOW>;
 		};
 
 		security2 {
-			label = "f5d8235-v2:amber:security";
+			label = "amber:security";
 			gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -117,7 +129,8 @@
 };
 
 &ethernet {
-	mtd-mac-address = <&uboot 0x40004>;
+	nvmem-cells = <&macaddr_uboot_40004>;
+	nvmem-cell-names = "mac-address";
 	pinctrl-names = "default";
 	pinctrl-0 = <&rgmii_pins>;
 };
@@ -136,7 +149,8 @@
 };
 
 &wmac {
-	ralink,mtd-eeprom = <&uboot 0x40000>;
+	nvmem-cells = <&eeprom_uboot_40000>;
+	nvmem-cell-names = "eeprom";
 };
 
 &otg {

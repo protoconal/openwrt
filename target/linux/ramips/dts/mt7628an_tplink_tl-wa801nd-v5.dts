@@ -1,4 +1,4 @@
-/dts-v1/;
+#include <dt-bindings/leds/common.h>
 
 #include "mt7628an_tplink_8m.dtsi"
 
@@ -33,31 +33,44 @@
 		compatible = "gpio-leds";
 
 		led_power: power {
-			label = "tl-wa801nd-v5:green:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 36 GPIO_ACTIVE_LOW>;
 		};
 
 		lan {
-			label = "tl-wa801nd-v5:green:lan";
+			function = LED_FUNCTION_LAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 37 GPIO_ACTIVE_LOW>;
 		};
 
 		wlan {
-			label = "tl-wa801nd-v5:green:wlan";
+			function = LED_FUNCTION_WLAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 44 GPIO_ACTIVE_LOW>;
 			linux,default-trigger = "phy0tpt";
 		};
 
 		wps_red {
-			label = "tl-wa801nd-v5:red:wps";
+			function = LED_FUNCTION_WPS;
+			color = <LED_COLOR_ID_RED>;
 			gpios = <&gpio 43 GPIO_ACTIVE_HIGH>;
 		};
 
 		wps_green {
-			label = "tl-wa801nd-v5:green:wps";
+			function = LED_FUNCTION_WPS;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 42 GPIO_ACTIVE_HIGH>;
 		};
 	};
+};
+
+&ehci {
+	status = "disabled";
+};
+
+&ohci {
+	status = "disabled";
 };
 
 &state_default {
@@ -66,4 +79,16 @@
 				"uart1", "wdt", "wled_an";
 		function = "gpio";
 	};
+};
+
+&wmac {
+	status = "okay";
+
+	nvmem-cells = <&eeprom_factory_20000>, <&macaddr_factory_f100 0>;
+	nvmem-cell-names = "eeprom", "mac-address";
+};
+
+&ethernet {
+	nvmem-cells = <&macaddr_factory_f100 0>;
+	nvmem-cell-names = "mac-address";
 };

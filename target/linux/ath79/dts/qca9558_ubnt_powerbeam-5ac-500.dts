@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
-/dts-v1/;
+// SPDX-License-Identifier: GPL-2.0-only
 
 #include "qca955x_ubnt_xc.dtsi"
 
@@ -22,7 +21,6 @@
 &mdio0 {
 	status = "okay";
 
-	phy-mask = <4>;
 	phy4: ethernet-phy@4 {
 		phy-mode = "sgmii";
 		reg = <4>;
@@ -33,7 +31,8 @@
 &eth0 {
 	status = "okay";
 
-	mtd-mac-address = <&art 0x0>;
+	nvmem-cells = <&macaddr_art_0>;
+	nvmem-cell-names = "mac-address";
 	phy-mode = "sgmii";
 	phy-handle = <&phy4>;
 };

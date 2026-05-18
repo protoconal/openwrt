@@ -12,12 +12,13 @@ PKG_VERSION:=5.4
 PKG_RELEASE:=1
 
 PKG_SOURCE:=imx-kobs-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=http://www.freescale.com/lgfiles/NMG/MAD/YOCTO/
+PKG_SOURCE_URL:=@OPENWRT
 PKG_HASH:=85171b46068ac47c42fedb8104167bf9afd33dd9527ed127e1ca2eb29d7a86bf
 PKG_BUILD_DIR:=$(BUILD_DIR)/imx-kobs-$(PKG_VERSION)
 
 PKG_LICENSE:=GPLv2
 PKG_LICENSE_FILES:=COPYING
+PKG_FLAGS:=nonshared
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -25,7 +26,7 @@ define Package/kobs-ng
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=Application for writing bootstreams to NAND flash
-  DEPENDS:=@TARGET_imx6
+  DEPENDS:=@TARGET_imx
 endef
 
 define Package/kobs-ng/description

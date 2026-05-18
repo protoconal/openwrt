@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-/dts-v1/;
+
+#include "qca956x.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
-
-#include "qca956x.dtsi"
 
 / {
 	model = "Compex WPJ563";
@@ -38,22 +37,22 @@
 		compatible = "gpio-leds";
 
 		sig1 {
-			label = "wpj563:green:sig1";
+			label = "green:sig1";
 			gpios = <&gpio 1 GPIO_ACTIVE_LOW>;
 		};
 
 		sig2 {
-			label = "wpj563:green:sig2";
+			label = "green:sig2";
 			gpios = <&gpio 5 GPIO_ACTIVE_LOW>;
 		};
 
 		sig3 {
-			label = "wpj563:green:sig4";
+			label = "green:sig4";
 			gpios = <&gpio 6 GPIO_ACTIVE_LOW>;
 		};
 
 		led_sig4: sig4 {
-			label = "wpj563:green:sig4";
+			label = "green:sig4";
 			gpios = <&gpio 7 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -65,8 +64,6 @@
 
 &spi {
 	status = "okay";
-
-	num-cs = <1>;
 
 	flash@0 {
 		compatible = "jedec,spi-nor";
@@ -82,6 +79,16 @@
 				label = "u-boot";
 				reg = <0x000000 0x030000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					macaddr_uboot_2e010: macaddr@2e010 {
+						reg = <0x2e010 0x6>;
+					};
+				};
 			};
 
 			partition@30000 {
@@ -90,10 +97,20 @@
 				reg = <0x030000 0xfc0000>;
 			};
 
-			art: partition@ff0000 {
+			partition@ff0000 {
 				label = "art";
 				reg = <0xff0000 0x010000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					cal_art_1000: calibration@1000 {
+						reg = <0x1000 0x440>;
+					};
+				};
 			};
 		};
 	};
@@ -101,8 +118,6 @@
 
 &mdio0 {
 	status = "okay";
-
-	phy-mask = <0>;
 
 	phy0: ethernet-phy@0 {
 		reg = <0>;
@@ -121,7 +136,8 @@
 
 	pll-data = <0x03000101 0x00000101 0x00001919>;
 
-	mtd-mac-address = <&uboot 0x2e010>;
+	nvmem-cells = <&macaddr_uboot_2e010>;
+	nvmem-cell-names = "mac-address";
 	phy-mode = "sgmii";
 	phy-handle = <&phy0>;
 };
@@ -134,12 +150,17 @@
 	status = "okay";
 };
 
-&uart {
+&usb_phy1 {
+	status = "okay";
+};
+
+&usb1 {
 	status = "okay";
 };
 
 &wmac {
 	status = "okay";
 
-	mtd-cal-data = <&art 0x1000>;
+	nvmem-cells = <&cal_art_1000>;
+	nvmem-cell-names = "calibration";
 };

@@ -1,5 +1,5 @@
 /*
- * patch-cmdline.c - patch the kernel command line on rb532
+ * patch-cmdline.c - patch the kernel command line
  *
  * Copyright (C) 2006 Felix Fietkau <nbd@nbd.name>
  *
@@ -51,13 +51,13 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Command line string too long\n");
 		goto err1;
 	}
-	
+
 	if (((fd = open(argv[1], O_RDWR)) < 0) ||
 		(ptr = (char *) mmap(0, search_space + CMDLINE_MAX, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0)) == (void *) (-1)) {
 		fprintf(stderr, "Could not open kernel image");
 		goto err2;
 	}
-	
+
 	for (p = ptr; p < (ptr + search_space); p += 4) {
 		if (memcmp(p, "CMDLINE:", 8) == 0) {
 			found = 1;

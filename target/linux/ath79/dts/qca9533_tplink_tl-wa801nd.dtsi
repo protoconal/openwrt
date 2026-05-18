@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 
+#include "qca953x.dtsi"
+
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
-
-#include "qca953x.dtsi"
+#include <dt-bindings/leds/common.h>
 
 / {
 	aliases {
@@ -18,28 +19,23 @@
 		compatible = "gpio-leds";
 
 		lan {
-			label = "tp-link:green:lan";
+			function = LED_FUNCTION_LAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 3 GPIO_ACTIVE_LOW>;
 		};
 
 		security_red {
-			label = "tp-link:red:security";
+			label = "red:security";
 			gpios = <&gpio 11 GPIO_ACTIVE_HIGH>;
 		};
 
-		wlan {
-			label = "tp-link:green:wlan";
-			gpios = <&gpio 12 GPIO_ACTIVE_LOW>;
-			linux,default-trigger = "phy0tpt";
-		};
-
 		led_system: system {
-			label = "tp-link:green:system";
+			label = "green:system";
 			gpios = <&gpio 13 GPIO_ACTIVE_LOW>;
 		};
 
 		security_green {
-			label = "tp-link:green:security";
+			label = "green:security";
 			gpios = <&gpio 15 GPIO_ACTIVE_HIGH>;
 		};
 	};
@@ -63,14 +59,8 @@
 	};
 };
 
-&uart {
-	status = "okay";
-};
-
 &spi {
 	status = "okay";
-
-	num-cs = <1>;
 
 	flash@0 {
 		compatible = "jedec,spi-nor";
@@ -86,6 +76,16 @@
 				label = "u-boot";
 				reg = <0x000000 0x020000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					macaddr_uboot_1fc00: macaddr@1fc00 {
+						reg = <0x1fc00 0x6>;
+					};
+				};
 			};
 
 			partition@20000 {
@@ -94,10 +94,20 @@
 				reg = <0x020000 0x3d0000>;
 			};
 
-			art: partition@3f0000 {
+			partition@3f0000 {
 				label = "art";
 				reg = <0x3f0000 0x010000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					cal_art_1000: calibration@1000 {
+						reg = <0x1000 0x440>;
+					};
+				};
 			};
 		};
 	};
@@ -108,7 +118,8 @@
 
 	phy-handle = <&swphy4>;
 
-	mtd-mac-address = <&uboot 0x1fc00>;
+	nvmem-cells = <&macaddr_uboot_1fc00>;
+	nvmem-cell-names = "mac-address";
 };
 
 &eth1 {
@@ -118,6 +129,11 @@
 &wmac {
 	status = "okay";
 
-	mtd-cal-data = <&art 0x1000>;
-	mtd-mac-address = <&uboot 0x1fc00>;
+	nvmem-cells = <&macaddr_uboot_1fc00>, <&cal_art_1000>;
+	nvmem-cell-names = "mac-address", "calibration";
+
+	led {
+		led-sources = <12>;
+		led-active-low;
+	};
 };

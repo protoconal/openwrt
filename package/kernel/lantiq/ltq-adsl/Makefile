@@ -10,10 +10,10 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=ltq-adsl
 PKG_VERSION:=3.24.4.4
-PKG_RELEASE:=3
+PKG_RELEASE:=5
 PKG_SOURCE:=drv_dsl_cpe_api_danube-$(PKG_VERSION).tar.gz
 PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/ltq-dsl-$(BUILD_VARIANT)/drv_dsl_cpe_api-$(PKG_VERSION)
-PKG_SOURCE_URL:=https://mirror2.openwrt.org/sources/
+PKG_SOURCE_URL:=@OPENWRT
 PKG_HASH:=eb2ed59715d3bf4e8a1460bbbe2f1660039e0a9f9d72afb1b2b16590094eb33c
 PKG_MAINTAINER:=John Crispin <john@phrozen.org>
 
@@ -27,7 +27,6 @@ define KernelPackage/ltq-adsl-template
   CATEGORY:=Kernel modules
   SUBMENU:=Network Devices
   TITLE:=adsl driver for $(1)
-  URL:=http://www.lantiq.com/
   VARIANT:=$(1)
   DEPENDS:=@$(2) +kmod-ltq-adsl-$(1)-mei
   FILES:=$(PKG_BUILD_DIR)/src/drv_dsl_cpe_api.ko
@@ -46,24 +45,20 @@ IFX_DSL_MAX_DEVICE=1
 IFX_DSL_LINES_PER_DEVICE=1
 IFX_DSL_CHANNELS_PER_LINE=1
 
+MAKE_FLAGS += \
+	$(KERNEL_MAKE_FLAGS)
+
 CONFIGURE_ARGS += --enable-kernel-include="$(LINUX_DIR)/include" \
 	--with-max-device="$(IFX_DSL_MAX_DEVICE)" \
 	--with-lines-per-device="$(IFX_DSL_LINES_PER_DEVICE)" \
 	--with-channels-per-line="$(IFX_DSL_CHANNELS_PER_LINE)" \
+	--enable-model=full \
+	--disable-dsl-pm-retx-counters \
+	--disable-dsl-pm-retx-thresholds \
+	--disable-adsl-mib-support \
+	--disable-adsl-trace \
 	--disable-dsl-delt-static \
 	--disable-adsl-led \
-	--enable-dsl-ceoc \
-	--enable-dsl-pm \
-	--enable-dsl-pm-total \
-	--enable-dsl-pm-history \
-	--enable-dsl-pm-showtime \
-	--enable-dsl-pm-channel-counters \
-	--enable-dsl-pm-datapath-counters \
-	--enable-dsl-pm-line-counters \
-	--enable-dsl-pm-channel-thresholds \
-	--enable-dsl-pm-datapath-thresholds \
-	--enable-dsl-pm-line-thresholds \
-	--enable-dsl-pm-optional-parameters \
 	--enable-linux-26 \
 	--enable-kernelbuild="$(LINUX_DIR)" \
 	ARCH=$(LINUX_KARCH)

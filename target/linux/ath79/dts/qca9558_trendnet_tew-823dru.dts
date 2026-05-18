@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-/dts-v1/;
+
+#include "qca955x.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
-
-#include "qca955x.dtsi"
+#include <dt-bindings/leds/common.h>
 
 / {
 	compatible = "trendnet,tew-823dru", "qca,qca9558";
 	model = "TRENDNET TEW-823DRU";
 
 	aliases {
+		label-mac-device = &eth1;
 		led-boot = &led_power_green;
 		led-failsafe = &led_power_green;
 		led-running = &led_power_green;
@@ -21,22 +22,24 @@
 		compatible = "gpio-leds";
 
 		power_orange {
-			label = "trendnet:orange:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_ORANGE>;
 			gpios = <&gpio 14 GPIO_ACTIVE_LOW>;
 		};
 
 		led_power_green: power_green {
-			label = "trendnet:green:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 19 GPIO_ACTIVE_LOW>;
 		};
 
 		planet_green {
-			label = "trendnet:green:planet";
+			label = "green:planet";
 			gpios = <&gpio 22 GPIO_ACTIVE_LOW>;
 		};
 
 		planet_orange {
-			label = "trendnet:orange:planet";
+			label = "orange:planet";
 			gpios = <&gpio 23 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -62,13 +65,16 @@
 
 &pcie0 {
 	status = "okay";
+
+	wifi@0,0 {
+		compatible = "qcom,ath10k";
+		reg = <0 0 0 0 0>;
+		nvmem-cells = <&maccaddr_mac_wan 1>;
+		nvmem-cell-names = "mac-address";
+	};
 };
 
 &pcie1 {
-	status = "okay";
-};
-
-&uart {
 	status = "okay";
 };
 
@@ -77,14 +83,7 @@
 };
 
 &usb0 {
-	#address-cells = <1>;
-	#size-cells = <0>;
 	status = "okay";
-
-	hub_port0: port@1 {
-		reg = <1>;
-		#trigger-source-cells = <0>;
-	};
 };
 
 &usb_phy1 {
@@ -92,20 +91,11 @@
 };
 
 &usb1 {
-	#address-cells = <1>;
-	#size-cells = <0>;
 	status = "okay";
-
-	hub_port1: port@1 {
-		reg = <1>;
-		#trigger-source-cells = <0>;
-	};
 };
 
 &spi {
 	status = "okay";
-
-	num-cs = <1>;
 
 	flash@0 {
 		compatible = "jedec,spi-nor";
@@ -151,12 +141,40 @@
 				label = "mac";
 				reg = <0xfe0000 0x010000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					maccaddr_mac_lan: macaddr@4 {
+						compatible = "mac-base";
+						reg = <0x4 0x11>;
+						#nvmem-cell-cells = <1>;
+					};
+
+					maccaddr_mac_wan: macaddr@18 {
+						compatible = "mac-base";
+						reg = <0x18 0x11>;
+						#nvmem-cell-cells = <1>;
+					};
+				};
 			};
 
-			art: partition@ff0000 {
+			partition@ff0000 {
 				label = "art";
 				reg = <0xff0000 0x010000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					cal_art_1000: calibration@1000 {
+						reg = <0x1000 0x440>;
+					};
+				};
 			};
 		};
 	};
@@ -180,6 +198,9 @@
 &eth0 {
 	status = "okay";
 
+	nvmem-cells = <&maccaddr_mac_lan 0>;
+	nvmem-cell-names = "mac-address";
+
 	phy-handle = <&phy0>;
 	pll-data = <0x56000000 0x00000101 0x00001616>;
 
@@ -192,6 +213,9 @@
 &eth1 {
 	status = "okay";
 
+	nvmem-cells = <&maccaddr_mac_wan 0>;
+	nvmem-cell-names = "mac-address";
+
 	pll-data = <0x03000101 0x00000101 0x00001616>;
 
 	fixed-link {
@@ -203,5 +227,6 @@
 &wmac {
 	status = "okay";
 
-	mtd-cal-data = <&art 0x1000>;
+	nvmem-cells = <&cal_art_1000>, <&maccaddr_mac_lan 0>;
+	nvmem-cell-names = "calibration", "mac-address";
 };

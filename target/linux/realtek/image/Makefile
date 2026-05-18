@@ -1,13 +1,52 @@
-#
-# Copyright (C) 2006-2010 OpenWrt.org
-#
-# This is free software, licensed under the GNU General Public License v2.
-# See /LICENSE for more information.
-#
+# SPDX-License-Identifier: GPL-2.0-only
+
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/image.mk
 
+KERNEL_LOADADDR = 0x80100000
+
+DEVICE_VARS += \
+BELKIN_HEADER \
+BELKIN_MODEL \
+        CAMEO_BOARD_MODEL \
+        CAMEO_BOARD_VERSION \
+        CAMEO_CUSTOMER_SIGNATURE \
+        CAMEO_KERNEL_PART \
+        CAMEO_KERNEL_PART_SIZE \
+        CAMEO_ROOTFS_PART \
+        FLASH_ADDR \
+        H3C_DEVICE_ID \
+        H3C_PRODUCT_ID \
+LINKSYS_HEADER \
+ZYNFW_BOARD \
+ZYNFW_ALIGN \
+ZYXEL_VERS
+
 DEVICE_VARS += IMAGE_SIZE CVIMG_KERNEL_BURN_ADDR CVIMG_LOADER_START_ADDR CVIMG_ROOTFS_BURN_ADDR
+
+define Build/rt-compress
+$(STAGING_DIR_HOST)/bin/xz -9 --format=lzma --stdout "$@" > "$@.new"
+mv "$@.new" "$@"
+endef
+
+define Build/rt-loader
+$(MAKE) all clean -C rt-loader CROSS_COMPILE="$(TARGET_CROSS)" \
+KERNEL_IMG_IN="$@" KERNEL_IMG_OUT="$@.new" BUILD_DIR="$@.build"
+mv "$@.new" "$@"
+endef
+
+define Build/rt-loader-no-uimage
+        $(MAKE) all clean -C rt-loader CROSS_COMPILE="$(TARGET_CROSS)" \
+                KERNEL_ADDR="$(KERNEL_LOADADDR)" KERNEL_IMG_IN="$@" \
+                KERNEL_IMG_OUT="$@.new" BUILD_DIR="$@.build"
+        mv "$@.new" "$@"
+endef
+
+define Build/rt-loader-standalone
+$(MAKE) all clean -C rt-loader CROSS_COMPILE="$(TARGET_CROSS)" \
+FLASH_ADDR=$(FLASH_ADDR) KERNEL_IMG_OUT="$@.new" BUILD_DIR="$@.build"
+mv "$@.new" "$@"
+endef
 
 define Build/loader-common
   rm -rf $@.src
@@ -102,198 +141,150 @@ define Build/tbs_dlink_big
   $(STAGING_DIR_HOST)/bin/tbs_dlink -b $(1) $@
 endef
 
+define Build/zyxel-vers
+       ( echo VERS;\
+       for hw in $(ZYXEL_VERS); do\
+               echo -n "V9.99($$hw.0) | ";\
+               date -d @$(SOURCE_DATE_EPOCH) +%m/%d/%Y;\
+       done ) >> $@
+endef
+
+define Build/cameo-tag
+$(SCRIPT_DIR)/cameo-tag.py $@ $(CAMEO_KERNEL_PART_SIZE)
+endef
+
+define Build/cameo-version
+echo -n "OpenWrt" >> $@
+dd if=/dev/zero bs=25 count=1 >> $@
+endef
+
+define Build/cameo-headers
+        dd if=$@ bs=$(CAMEO_KERNEL_PART_SIZE) count=1 of=$@.kernel_part; \
+        dd if=$@ bs=$(CAMEO_KERNEL_PART_SIZE) skip=1 of=$@.rootfs_part; \
+        $(SCRIPT_DIR)/cameo-imghdr.py $@.kernel_part $@.kernel_part.hex \
+                "$(CAMEO_BOARD_MODEL)" os $(CAMEO_KERNEL_PART) \
+                $(CAMEO_CUSTOMER_SIGNATURE) \
+                $(CAMEO_BOARD_VERSION) \
+                $(KERNEL_LOADADDR); \
+        $(SCRIPT_DIR)/cameo-imghdr.py $@.rootfs_part $@.rootfs_part.hex \
+                "$(CAMEO_BOARD_MODEL)" squashfs $(CAMEO_ROOTFS_PART) \
+                $(CAMEO_CUSTOMER_SIGNATURE) \
+                $(CAMEO_BOARD_VERSION); \
+        cat $@.kernel_part.hex $@.rootfs_part.hex > $@
+endef
+
+define Build/7z
+$(STAGING_DIR_HOST)/bin/7zr a $(@).new -t7z -m0=lzma $(@)
+mv $@.new $@
+endef
+
+define Build/h3c-image
+$(STAGING_DIR_HOST)/bin/mkh3cimg \
+-i $(@) \
+-o $(@).new \
+-c 7z \
+-p $(H3C_PRODUCT_ID) \
+-d $(H3C_DEVICE_ID)
+mv $@.new $@
+endef
+
+define Build/h3c-vfs
+$(STAGING_DIR_HOST)/bin/mkh3cvfs \
+-i $(@) \
+-o $(@).new \
+-f openwrt-kernel.bin
+mv $@.new $@
+endef
+
+define Build/belkin-header
+$(SCRIPT_DIR)/belkin-header.py $(@) $(@).new $(BELKIN_HEADER) ${BELKIN_MODEL}
+mv $@.new $@
+endef
+
+define Build/linksys-image
+$(SCRIPT_DIR)/linksys-image.sh $(@) $(@).new $(LINKSYS_MODEL)
+mv $@.new $@
+endef
+
+define Build/xikestor-nosimg
+$(STAGING_DIR_HOST)/bin/nosimg-enc -i $@ -o $@.new
+mv $@.new $@
+endef
+
+define Build/xikestor-sks7300-img
+$(STAGING_DIR_HOST)/bin/sks7300-img \
+-i $@ \
+-o $@.new \
+-n OpenWrt \
+-v $(VERSION_DIST)$(firstword $(subst +, , $(firstword $(subst -, ,$(REVISION)))))
+mv $@.new $@
+endef
+
+define Build/zynsig
+$(STAGING_DIR_HOST)/bin/zynsig -i $@ \
+-o $@.new
+mv $@.new $@
+endef
+
 define Device/Default
-  BLOCKSIZE := 4k
-  PROFILES := Default $$(DEV_PROFILE)
-  CVIMG_ROOTFS_BURN_ADDR := 0
-endef
-
-define Device/RealtekDTS
-  PROFILES = Default $$(DTS)
+  PROFILES = Default
+  KERNEL := \
+kernel-bin | \
+append-dtb | \
+libdeflate-gzip | \
+uImage gzip
+  KERNEL_INITRAMFS := \
+kernel-bin | \
+append-dtb | \
+libdeflate-gzip | \
+uImage gzip
   DEVICE_DTS_DIR := ../dts
-  KERNEL := kernel-bin | append-dtb | lzma
+  DEVICE_DTS = $$(SOC)_$(1)
+  COMPILE :=
+  IMAGES := sysupgrade.bin
+  IMAGE/sysupgrade.bin := \
+append-kernel | \
+pad-to 64k | \
+append-rootfs | \
+pad-rootfs | \
+check-size | \
+append-metadata
 endef
 
-ifeq ($(SUBTARGET),rtl8197d)
-define Device/DIR815D1
-  $(Device/RealtekDTS)
-  DEVICE_DTS := DIR815D1
-  DEV_PROFILE := DIR815D1
-  IMAGE_SIZE := 7936k
-  DEVICE_TITLE := D-Link DIR-815 D1
-  SUPPORTED_DEVICES := dir-815-d1
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin := append-kernel | pad-to 1900544 | append-rootfs | pad-rootfs | \
-	tbs_dlink_big -k 0x197400 -r 0x4DFF70 -g BR -m DIR825G1 -p RTL8197DL_AC1200
-  IMAGE/sysupgrade.bin := append-kernel | pad-to 1900544 | append-rootfs | \
-  pad-rootfs | append-metadata
-endef
-TARGET_DEVICES += DIR815D1
-
-define Device/DIR822C1
-  $(Device/RealtekDTS)
-  BLOCKSIZE := 64k
-  DEVICE_DTS := DIR822C1
-  DEVICE_TITLE := D-Link DIR-822 C1
-  SUPPORTED_DEVICES := dir-822-c1
-  IMAGE_SIZE := 7936k
-  DEV_PROFILE := DIR822C1
-  CMDLINE := console=ttyS0,38400
-  KERNEL := kernel-bin | append-dtb | lzma | loader-cmdline-compile
-  CVIMG_KERNEL_BURN_ADDR := 0x30000
-  CVIMG_LOADER_START_ADDR := 0x81000000
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | cvimg-pad-rootfs
-  IMAGE/sysupgrade.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | pad-rootfs
-endef
-TARGET_DEVICES += DIR822C1
-
-endif
-
-ifeq ($(SUBTARGET),rtl8197f)
-define Device/RE708
-  $(Device/RealtekDTS)
-  BLOCKSIZE := 64k
-  DEVICE_DTS := RE708
-  DEVICE_TITLE := Multilaser RE708 V1
-  SUPPORTED_DEVICES := re708v1 re708-v1
-  IMAGE_SIZE := 7936k
-  DEV_PROFILE := RE708
-  CMDLINE := console=ttyS0,38400
-  KERNEL := kernel-bin | append-dtb | lzma | loader-cmdline-compile
-  CVIMG_KERNEL_BURN_ADDR := 0x30000
-  CVIMG_LOADER_START_ADDR := 0x81000000
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | cvimg-pad-rootfs
-  IMAGE/sysupgrade.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | pad-rootfs
-endef
-TARGET_DEVICES += RE708
-
-define Device/GWR1200AC
-  $(Device/RealtekDTS)
-  BLOCKSIZE := 64k
-  DEVICE_TITLE := Greatek GWR1200AC V1
-  SUPPORTED_DEVICES := gwr1200ac-v1
-  IMAGE_SIZE := 7936k
-  DEV_PROFILE := GWR1200AC
-  CMDLINE := console=ttyS0,38400
-  KERNEL := kernel-bin | append-dtb | lzma | loader-cmdline-compile
-  CVIMG_KERNEL_BURN_ADDR := 0x30000
-  CVIMG_LOADER_START_ADDR := 0x80A00000
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | cvimg-pad-rootfs
-  IMAGE/sysupgrade.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | pad-rootfs
+define Device/kernel-lzma
+  KERNEL := \
+kernel-bin | \
+append-dtb | \
+lzma | \
+uImage lzma
+  KERNEL_INITRAMFS := \
+kernel-bin | \
+append-dtb | \
+lzma | \
+uImage lzma
 endef
 
-define Device/GWR1200AC-V1
-  $(Device/GWR1200AC)
-  DEVICE_DTS := GWR1200ACV1
-  DEVICE_TITLE := Greatek GWR1200AC V1
-  SUPPORTED_DEVICES := gwr1200ac-v1
+define Device/uimage-rt-loader
+KERNEL/rt-loader := kernel-bin | append-dtb | rt-compress | rt-loader
+KERNEL := $$(KERNEL/rt-loader) | uImage none
+KERNEL_INITRAMFS := $$(KERNEL/rt-loader) | uImage none
 endef
-TARGET_DEVICES += GWR1200AC-V1
 
-define Device/GWR1200AC-V2
-  $(Device/GWR1200AC)
-  DEVICE_DTS := GWR1200ACV2
-  DEVICE_TITLE := Greatek GWR1200AC V2
-  SUPPORTED_DEVICES := gwr1200ac-v2
+define Device/rt-loader-bootbase
+KERNEL/rt-compress := kernel-bin | append-dtb | rt-compress
+KERNEL := $$(KERNEL/rt-compress) | uImage lzma
+KERNEL_INITRAMFS := $$(KERNEL/rt-compress) | uImage lzma | rt-loader
 endef
-TARGET_DEVICES += GWR1200AC-V2
 
-define Device/ACTIONRG1200
-  $(Device/RealtekDTS)
-  BLOCKSIZE := 64k
-  DEVICE_DTS := ACTIONRG1200
-  DEVICE_TITLE := Intelbras ACTIONRG1200 V1
-  SUPPORTED_DEVICES := actionrg1200v1
-  IMAGE_SIZE := 7872k
-  DEV_PROFILE := ACTIONRG1200
-  CMDLINE := console=ttyS0,115200
-  KERNEL := kernel-bin | append-dtb | lzma | loader-cmdline-compile
-  CVIMG_KERNEL_BURN_ADDR := 0x30000
-  CVIMG_LOADER_START_ADDR := 0x80A00000
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin = append-kernel | pad-offset 64k 16 | append-rootfs | pad-rootfs -x 16 | cvimg-kernel -T
-  IMAGE/sysupgrade.bin = append-kernel | pad-offset 64k 16 | append-rootfs | pad-rootfs -x 16 | cvimg-kernel -S
+define Build/zynos-firmware
+$(STAGING_DIR_HOST)/bin/mkzynfw \
+    -B $(ZYNFW_BOARD) \
+    -b $(KDIR)/loader-$(DEVICE_NAME).bin \
+    -r $@:$(ZYNFW_ALIGN) \
+    -o $@.new
+mv $@.new $@
 endef
-TARGET_DEVICES += ACTIONRG1200
 
-define Device/ACTIONRF1200
-  $(Device/RealtekDTS)
-  BLOCKSIZE := 64k
-  DEVICE_DTS := ACTIONRF1200
-  DEVICE_TITLE := Intelbras ACTIONRF1200 V1
-  SUPPORTED_DEVICES := actionrf1200v1
-  IMAGE_SIZE := 7872k
-  DEV_PROFILE := ACTIONRF1200
-  CMDLINE := console=ttyS0,115200
-  KERNEL := kernel-bin | append-dtb | lzma | loader-cmdline-compile
-  CVIMG_KERNEL_BURN_ADDR := 0x30000
-  CVIMG_LOADER_START_ADDR := 0x80A00000
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin = append-kernel | pad-offset 64k 16 | append-rootfs | pad-rootfs -x 16 | cvimg-kernel -T
-  IMAGE/sysupgrade.bin = append-kernel | pad-offset 64k 16 | append-rootfs | pad-rootfs -x 16 | cvimg-kernel -S
-endef
-TARGET_DEVICES += ACTIONRF1200
-endif
-
-ifeq ($(SUBTARGET),rtl8196e)
-define Device/GWR300N
-  $(Device/RealtekDTS)
-  DEVICE_DTS := GWR300
-  DEVICE_TITLE := Greatek GWR 300N
-  SUPPORTED_DEVICES := gwr300v1 gwr300-v1
-  IMAGE_SIZE := 3904k
-  DEV_PROFILE := GWR300N
-  CMDLINE := console=ttyS0,38400
-  KERNEL := kernel-bin | append-dtb | lzma | loader-cmdline-compile
-  CVIMG_KERNEL_BURN_ADDR := 0x18000
-  CVIMG_LOADER_START_ADDR := 0x81000000
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | cvimg-pad-rootfs
-  IMAGE/sysupgrade.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | pad-rootfs
-endef
-TARGET_DEVICES += GWR300N
-
-define Device/RE172
-  $(Device/RealtekDTS)
-  DEVICE_DTS := RE172
-  DEVICE_TITLE := Multilaser RE172 V1
-  SUPPORTED_DEVICES := re172v1 re172-v1
-  IMAGE_SIZE := 4032k
-  DEV_PROFILE := RE172
-  CMDLINE := console=ttyS0,38400
-  KERNEL := kernel-bin | append-dtb | lzma | loader-cmdline-compile
-  CVIMG_KERNEL_BURN_ADDR := 0x10000
-  CVIMG_LOADER_START_ADDR := 0x81000000
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | cvimg-pad-rootfs
-  IMAGE/sysupgrade.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | pad-rootfs
-endef
-TARGET_DEVICES += RE172
-
-define Device/RE707
-  $(Device/RealtekDTS)
-  DEVICE_DTS := RE707
-  DEVICE_TITLE := Multilaser RE707 V1
-  SUPPORTED_DEVICES := re707v1 re707-v1
-  IMAGE_SIZE := 3904k
-  DEV_PROFILE := RE707
-  CMDLINE := console=ttyS0,38400
-  KERNEL := kernel-bin | append-dtb | lzma | loader-cmdline-compile
-  CVIMG_KERNEL_BURN_ADDR := 0x20000
-  CVIMG_LOADER_START_ADDR := 0x81000000
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | cvimg-pad-rootfs
-  IMAGE/sysupgrade.bin = append-kernel | append-fake-rootfs | append-rootfs | cvimg-kernel | pad-rootfs
-endef
-TARGET_DEVICES += RE707
-
-endif
-
-define Image/Build/Initramfs
-        $(call Image/Build/Profile/$(PROFILE),initramfs)
-endef
+include $(SUBTARGET).mk
 
 $(eval $(call BuildImage))

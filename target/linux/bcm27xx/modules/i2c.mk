@@ -1,9 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Copyright (C) 2019 OpenWrt.org
-#
-# This is free software, licensed under the GNU General Public License v2.
-# See /LICENSE for more information.
-#
 
 I2C_BCM2835_MODULES:=\
   CONFIG_I2C_BCM2835:drivers/i2c/busses/i2c-bcm2835
@@ -19,3 +16,19 @@ define KernelPackage/i2c-bcm2835/description
 endef
 
 $(eval $(call KernelPackage,i2c-bcm2835))
+
+
+I2C_BRCMSTB_MODULES:=\
+  CONFIG_I2C_BRCMSTB:drivers/i2c/busses/i2c-brcmstb
+
+define KernelPackage/i2c-brcmstb
+  $(call i2c_defaults,$(I2C_BRCMSTB_MODULES),59)
+  TITLE:=Broadcom BRCMSTB I2C master controller driver
+  DEPENDS:=@TARGET_bcm27xx +kmod-i2c-core
+endef
+
+define KernelPackage/i2c-brcmstb/description
+  This package contains the BRCM Settop/DSL I2C master controller driver
+endef
+
+$(eval $(call KernelPackage,i2c-brcmstb))

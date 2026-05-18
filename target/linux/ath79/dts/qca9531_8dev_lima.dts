@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-/dts-v1/;
+
+#include "qca953x.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
-
-#include "qca953x.dtsi"
 
 / {
 	compatible = "8dev,lima", "qca,qca9531";
@@ -15,7 +14,7 @@
 
 		reset {
 			label = "reset";
-			linux-code = "KEY_RESTART";
+			linux,code = <KEY_RESTART>;
 			gpios = <&gpio 16 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -25,28 +24,16 @@
 	status = "okay";
 };
 
-&uart {
-	status = "okay";
-};
-
 &usb0 {
 	status = "okay";
-
-	dr_mode = "host";
 };
 
 &usb_phy {
 	status = "okay";
 };
 
-&wdt {
-	status = "okay";
-};
-
 &spi {
 	status = "okay";
-
-	num-cs = <1>;
 
 	/* Winbond W25Q256 SPI flash */
 	flash@0 {
@@ -70,10 +57,28 @@
 				reg = <0x040000 0x040000>;
 			};
 
-			art: partition@80000 {
+			partition@80000 {
 				label = "art";
 				reg = <0x080000 0x040000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					macaddr_art_0: macaddr@0 {
+						reg = <0x0 0x6>;
+					};
+
+					macaddr_art_6: macaddr@6 {
+						reg = <0x6 0x6>;
+					};
+
+					cal_art_1000: calibration@1000 {
+						reg = <0x1000 0x440>;
+					};
+				};
 			};
 
 			partition@c0000 {
@@ -93,7 +98,9 @@
 	status = "okay";
 
 	phy-handle = <&swphy0>;
-	mtd-mac-address = <&art 0x6>;
+
+	nvmem-cells = <&macaddr_art_6>;
+	nvmem-cell-names = "mac-address";
 
 	gmac-config {
 		device = <&gmac>;
@@ -104,13 +111,13 @@
 };
 
 &eth1 {
-	status = "okay";
-
-	mtd-mac-address = <&art 0x0>;
+	nvmem-cells = <&macaddr_art_0>;
+	nvmem-cell-names = "mac-address";
 };
 
 &wmac {
 	status = "okay";
 
-	mtd-cal-data = <&art 0x1000>;
+	nvmem-cells = <&cal_art_1000>;
+	nvmem-cell-names = "calibration";
 };

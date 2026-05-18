@@ -1,9 +1,8 @@
-/dts-v1/;
-
 #include "rt3883.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 
 / {
 	compatible = "omnima,hpm", "ralink,rt3662-soc", "ralink,rt3883-soc";
@@ -21,8 +20,7 @@
 	};
 
 	keys {
-		compatible = "gpio-keys-polled";
-		poll-interval = <100>;
+		compatible = "gpio-keys";
 
 		reset {
 			label = "reset";
@@ -35,41 +33,43 @@
 		compatible = "gpio-leds";
 
 		power {
-			label = "hpm:orange:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_ORANGE>;
 			gpios = <&gpio0 7 GPIO_ACTIVE_LOW>;
 			default-state = "on";
 		};
 
 		led_status: status {
-			label = "hpm:green:status";
+			function = LED_FUNCTION_STATUS;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
 			default-state = "on";
 		};
 
 		eth {
-			label = "hpm:green:eth";
+			label = "green:eth";
 			gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
 		};
 
 		eth2 {
-			label = "hpm:red:eth";
+			label = "red:eth";
 			gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
 		};
 
 		wifi {
-			label = "hpm:green:wifi";
+			label = "green:wifi";
 			gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
 		};
 
 		wifi2 {
-			label = "hpm:red:wifi";
+			label = "red:wifi";
 			gpios = <&gpio0 19 GPIO_ACTIVE_LOW>;
 		};
 	};
 
 	gpio_export {
 		compatible = "gpio-export";
-		#size-cells = <0>;
+
 		/* gpio 12 and 13 handle the OC input */
 
 		usb0 {
@@ -111,10 +111,24 @@
 				read-only;
 			};
 
-			factory: partition@40000 {
+			partition@40000 {
 				reg = <0x00040000 0x00010000>;
 				label = "factory";
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x200>;
+					};
+
+					macaddr_factory_28: macaddr@28 {
+						reg = <0x28 0x6>;
+					};
+				};
 			};
 
 			partition@50000 {
@@ -136,7 +150,8 @@
 &ethernet {
 	phy-handle = <&phy0>;
 	phy-mode = "rgmii";
-	mtd-mac-address = <&factory 0x28>;
+	nvmem-cells = <&macaddr_factory_28>;
+	nvmem-cell-names = "mac-address";
 
 	mdio-bus {
 		status = "okay";
@@ -148,7 +163,8 @@
 };
 
 &wmac {
-	ralink,mtd-eeprom = <&factory 0x0>;
+	nvmem-cells = <&eeprom_factory_0>;
+	nvmem-cell-names = "eeprom";
 };
 
 &ehci {

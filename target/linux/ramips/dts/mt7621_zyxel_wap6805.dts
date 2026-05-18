@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-/dts-v1/;
 
 #include "mt7621.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 
 / {
 	compatible = "zyxel,wap6805", "mediatek,mt7621-soc";
-	model = "ZyXEL WAP6805";
+	model = "Zyxel WAP6805";
 
 	aliases {
 		led-boot = &led_status_green;
@@ -22,17 +22,19 @@
 		compatible = "gpio-leds";
 
 		led_status_red: status_red {
-			label = "wap6805:red:status";
+			function = LED_FUNCTION_STATUS;
+			color = <LED_COLOR_ID_RED>;
 			gpios = <&gpio 4 GPIO_ACTIVE_HIGH>;
 		};
 
 		status_blink {
-			label = "wap6805:blink:status";
+			label = "blink:status";
 			gpios = <&gpio 7 GPIO_ACTIVE_HIGH>;
 		};
 
 		led_status_green: status_green {
-			label = "wap6805:green:status";
+			function = LED_FUNCTION_STATUS;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 13 GPIO_ACTIVE_HIGH>;
 		};
 	};
@@ -74,10 +76,24 @@
 			read-only;
 		};
 
-		factory: partition@200000 {
+		partition@200000 {
 			label = "Factory";
 			reg = <0x200000 0x100000>;
 			read-only;
+
+			nvmem-layout {
+				compatible = "fixed-layout";
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				eeprom_factory_0: eeprom@0 {
+					reg = <0x0 0x400>;
+				};
+
+				macaddr_factory_e000: macaddr@e000 {
+					reg = <0xe000 0x6>;
+				};
+			};
 		};
 
 		partition@300000 {
@@ -122,14 +138,17 @@
 };
 
 &pcie0 {
-	mt76@0,0 {
+	wifi@0,0 {
+		compatible = "mediatek,mt76";
 		reg = <0x0000 0 0 0 0>;
-		mediatek,mtd-eeprom = <&factory 0x0>;
+		nvmem-cells = <&eeprom_factory_0>;
+		nvmem-cell-names = "eeprom";
 	};
 };
 
 &gmac0 {
-	mtd-mac-address = <&factory 0xe000>;
+	nvmem-cells = <&macaddr_factory_e000>;
+	nvmem-cell-names = "mac-address";
 };
 
 &gmac1 {
@@ -160,6 +179,10 @@
 			label = "lan1";
 		};
 	};
+};
+
+&usb_phy {
+	status = "disabled";
 };
 
 &xhci {

@@ -1,9 +1,8 @@
-/dts-v1/;
-
 #include "mt7628an.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 
 / {
 	compatible = "buffalo,wcr-1166ds", "mediatek,mt7628an-soc";
@@ -43,42 +42,43 @@
 		compatible = "gpio-leds";
 
 		router_o {
-			label = "wcr-1166ds:orange:router";
+			label = "orange:router";
 			gpios = <&gpio 37 GPIO_ACTIVE_LOW>;
 		};
 
 		router_g {
-			label = "wcr-1166ds:green:router";
+			label = "green:router";
 			gpios = <&gpio 38 GPIO_ACTIVE_LOW>;
 		};
 
 		internet_o {
-			label = "wcr-1166ds:orange:internet";
+			label = "orange:internet";
 			gpios = <&gpio 39 GPIO_ACTIVE_LOW>;
 		};
 
 		internet_g {
-			label = "wcr-1166ds:green:internet";
+			label = "green:internet";
 			gpios = <&gpio 40 GPIO_ACTIVE_LOW>;
 		};
 
 		wireless_o {
-			label = "wcr-1166ds:orange:wireless";
+			label = "orange:wireless";
 			gpios = <&gpio 41 GPIO_ACTIVE_LOW>;
 		};
 
 		wireless_g {
-			label = "wcr-1166ds:green:wireless";
+			label = "green:wireless";
 			gpios = <&gpio 42 GPIO_ACTIVE_LOW>;
 		};
 
 		diag {
-			label = "wcr-1166ds:orange:diag";
+			label = "orange:diag";
 			gpios = <&gpio 43 GPIO_ACTIVE_LOW>;
 		};
 
 		led_power: power {
-			label = "wcr-1166ds:green:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 44 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -102,9 +102,11 @@
 };
 
 &pcie0 {
-	mt76@0,0 {
+	wifi@0,0 {
+		compatible = "mediatek,mt76";
 		reg = <0x0000 0 0 0 0>;
-		mediatek,mtd-eeprom = <&factory 0x8000>;
+		nvmem-cells = <&eeprom_factory_8000>;
+		nvmem-cell-names = "eeprom";
 		ieee80211-freq-limit = <5000000 6000000>;
 	};
 };
@@ -122,7 +124,7 @@
 	flash@0 {
 		compatible = "jedec,spi-nor";
 		reg = <0>;
-		spi-max-frequency = <10000000>;
+		spi-max-frequency = <40000000>;
 
 		partitions {
 			compatible = "fixed-partitions";
@@ -141,14 +143,29 @@
 				read-only;
 			};
 
-			factory: partition@40000 {
+			partition@40000 {
 				label = "factory";
 				reg = <0x40000 0x10000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x400>;
+					};
+
+					eeprom_factory_8000: eeprom@8000 {
+						reg = <0x8000 0x200>;
+					};
+				};
 			};
 
 			partition@50000 {
-				compatible = "openwrt,trx";
+				compatible = "brcm,trx";
+				brcm,trx-magic = <0x746f435c>;
 				label = "firmware";
 				reg = <0x50000 0x7c0000>;
 			};
@@ -175,4 +192,7 @@
 
 &wmac {
 	status = "okay";
+
+	nvmem-cells = <&eeprom_factory_0>;
+	nvmem-cell-names = "eeprom";
 };

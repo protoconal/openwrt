@@ -7,11 +7,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mtd-utils
-PKG_VERSION:=2.1.1
+PKG_VERSION:=2.3.1
+PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
-PKG_SOURCE_URL:=ftp://ftp.infradead.org/pub/mtd-utils/
-PKG_HASH:=8d15e8b70f036d6af1a66011f8ca0e048e9675fa7983d33bea92c24313a232d2
+PKG_SOURCE_URL:=https://infraroot.at/pub/mtd/
+PKG_HASH:=03d9dc58ad10ea3549d9528f6b17a44d8944e18e96c0f31474f9f977078b83dc
+PKG_CPE_ID:=cpe:/a:mtd-utils_project:mtd-utils
 
 PKG_FIXUP:=autoreconf
 
@@ -27,15 +29,13 @@ ifneq ($(HOST_OS),Linux)
 	-include fls.h
 endif
 
-HOST_CONFIGURE_VARS+= \
-	UUID_CFLAGS="-I$(STAGING_DIR_HOST)/include/e2fsprogs/uuid"
-
 HOST_CONFIGURE_ARGS+= \
-	--disable-tests \
+	--without-tests \
 	--without-crypto \
 	--without-xattr \
 	--without-zstd \
-	--without-lzo
+	--without-lzo \
+	--with-lzma
 
 HOST_MAKE_FLAGS += \
 	PROGRAMS="mkfs.jffs2 ubinize mkfs.ubifs"

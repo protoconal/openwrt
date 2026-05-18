@@ -1,9 +1,8 @@
-/dts-v1/;
-
 #include "rt5350.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 
 / {
 	compatible = "intenso,memory2move", "ralink,rt5350-soc";
@@ -24,19 +23,19 @@
 		compatible = "gpio-leds";
 
 		led_wifi: wifi {
-			label = "memory2move:blue:wifi";
+			label = "blue:wifi";
 			gpios = <&gpio0 7 GPIO_ACTIVE_LOW>;
 		};
 
 		wan {
-			label = "memory2move:green:wan";
+			function = LED_FUNCTION_WAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
 		};
 	};
 
 	keys {
-		compatible = "gpio-keys-polled";
-		poll-interval = <20>;
+		compatible = "gpio-keys";
 
 		power {
 			label = "power";
@@ -77,10 +76,24 @@
 				read-only;
 			};
 
-			factory: partition@40000 {
+			partition@40000 {
 				label = "factory";
 				reg = <0x40000 0x10000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x200>;
+					};
+
+					macaddr_factory_28: macaddr@28 {
+						reg = <0x28 0x6>;
+					};
+				};
 			};
 
 			partition@50000 {
@@ -100,21 +113,15 @@
 };
 
 &ethernet {
-	mtd-mac-address = <&factory 0x28>;
+	nvmem-cells = <&macaddr_factory_28>;
+	nvmem-cell-names = "mac-address";
 };
 
 &esw {
 	mediatek,portmap = <0x2f>;
 };
 
-&ehci {
-	status = "okay";
-};
-
-&ohci {
-	status = "okay";
-};
-
 &wmac {
-	ralink,mtd-eeprom = <&factory 0x0>;
+	nvmem-cells = <&eeprom_factory_0>;
+	nvmem-cell-names = "eeprom";
 };

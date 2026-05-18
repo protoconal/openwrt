@@ -8,21 +8,20 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=tcpdump
-PKG_VERSION:=4.9.3
+PKG_VERSION:=4.99.6
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=http://www.us.tcpdump.org/release/ \
-	http://www.tcpdump.org/release/
-PKG_HASH:=2cd47cb3d460b6ff75f4a9940f594317ad456cfbf2bd2c8e5151e16559db6410
-
-PKG_BUILD_PARALLEL:=1
+PKG_SOURCE_URL:=https://www.tcpdump.org/release/
+PKG_HASH:=5839921a0f67d7d8fa3dacd9cd41e44c89ccb867e8a6db216d62628c7fd14b09
 
 PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
 PKG_LICENSE:=BSD-3-Clause
 PKG_CPE_ID:=cpe:/a:tcpdump:tcpdump
 
 PKG_INSTALL:=1
+PKG_BUILD_FLAGS:=gc-sections
+PKG_BUILD_PARALLEL:=1
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -31,7 +30,7 @@ define Package/tcpdump/default
   CATEGORY:=Network
   DEPENDS:=+libpcap
   TITLE:=Network monitoring and data acquisition tool
-  URL:=http://www.tcpdump.org/
+  URL:=https://www.tcpdump.org/
 endef
 
 define Package/tcpdump
@@ -43,30 +42,13 @@ define Package/tcpdump-mini
   $(Package/tcpdump/default)
   TITLE+= (minimal version)
   VARIANT:=mini
+  PROVIDES:=tcpdump
 endef
 
 CONFIGURE_ARGS += \
 	--without-cap-ng \
-	--without-crypto
-
-ifeq ($(CONFIG_IPV6),y)
-CONFIGURE_ARGS += \
-	--enable-ipv6
-endif
-
-TARGET_CFLAGS += -ffunction-sections -fdata-sections
-TARGET_LDFLAGS += -Wl,--gc-sections
-
-CONFIGURE_VARS += \
-	BUILD_CC="$(TARGET_CC)" \
-	HOSTCC="$(HOSTCC)" \
-	td_cv_buggygetaddrinfo="no" \
-	ac_cv_linux_vers=$(LINUX_VERSION) \
-	ac_cv_header_rpc_rpcent_h=no \
-	ac_cv_lib_rpc_main=no \
-	ac_cv_path_PCAP_CONFIG=""
-
-MAKE_FLAGS :=
+	--without-crypto \
+	$(call autoconf_bool,CONFIG_IPV6,ipv6)
 
 ifeq ($(BUILD_VARIANT),mini)
   TARGET_CFLAGS += -DTCPDUMP_MINI
@@ -74,12 +56,9 @@ ifeq ($(BUILD_VARIANT),mini)
   MAKE_FLAGS += TCPDUMP_MINI=1
 endif
 
-MAKE_FLAGS += \
-	CCOPT="$(TARGET_CFLAGS)" INCLS="-I. $(TARGET_CPPFLAGS)"
-
 define Package/tcpdump/install
-	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/tcpdump $(1)/usr/sbin/
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/tcpdump $(1)/usr/bin/
 endef
 
 Package/tcpdump-mini/install = $(Package/tcpdump/install)

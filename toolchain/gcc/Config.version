@@ -1,28 +1,19 @@
-config GCC_VERSION_5
-	default y if GCC_USE_VERSION_5
+config GCC_VERSION_13
+	default y if GCC_USE_VERSION_13
 	bool
 
-config GCC_VERSION_7
-	default y if GCC_USE_VERSION_7
-	bool
-
-config GCC_VERSION_9
-	default y if GCC_USE_VERSION_9
-	bool
-
-config GCC_VERSION_10
-	default y if GCC_USE_VERSION_10
+config GCC_VERSION_15
+	default y if GCC_USE_VERSION_15
 	bool
 
 config GCC_VERSION
 	string
-	default "5.5.0"		if GCC_VERSION_5
-	default "7.5.0"		if GCC_VERSION_7
-	default "9.3.0"		if GCC_VERSION_9
-	default "10.1.0"	if GCC_VERSION_10
-	default "8.4.0"
+	default EXTERNAL_GCC_VERSION	if EXTERNAL_TOOLCHAIN && !NATIVE_TOOLCHAIN
+	default "13.4.0"	if GCC_VERSION_13
+	default "15.2.0"	if GCC_VERSION_15
+	default "14.3.0"
 
-config GCC_USE_IREMAP
+config GCC_USE_DEFAULT_VERSION
 	bool
-	default y if ( GCC_USE_VERSION_5 || GCC_USE_VERSION_7 )
-	default n
+	default y if !TOOLCHAINOPTS || GCC_USE_VERSION_14
+	imply KERNEL_WERROR

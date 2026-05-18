@@ -1,6 +1,18 @@
-diff -uprN a/src/mips/getcontext.S b/src/mips/getcontext.S
---- a/src/mips/getcontext.S	2012-10-06 12:54:38.000000000 +0800
-+++ b/src/mips/getcontext.S	2016-06-08 13:35:25.033051679 +0800
+From b2d2e81e5fe53b01a0dd39e2e634f963ebeaab43 Mon Sep 17 00:00:00 2001
+From: Ross Burton <ross.burton@arm.com>
+Date: Tue, 16 Jan 2024 18:22:38 +0000
+Subject: [PATCH] mips/getcontext.S: use assembler-friendly byte order symbols
+
+endian.h on musl/mips can't be included in __ASSEMBLER__ mode,
+so use the __BYTE_ORDER__ symbol instead.
+
+Signed-off-by: Ross Burton <ross.burton@arm.com>
+---
+ src/mips/getcontext.S | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+--- a/src/mips/getcontext.S
++++ b/src/mips/getcontext.S
 @@ -24,12 +24,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING
  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
  
@@ -16,4 +28,3 @@ diff -uprN a/src/mips/getcontext.S b/src/mips/getcontext.S
  #  define OFFSET 4
  # else
  #  define OFFSET 0
-

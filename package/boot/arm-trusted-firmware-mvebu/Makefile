@@ -7,106 +7,242 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=arm-trusted-firmware-mvebu
-PKG_VERSION:=2.2
-PKG_RELEASE:=2
-
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_RELEASE).tar.xz
-PKG_SOURCE_URL:=https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git
-PKG_SOURCE_DATE:=2020-01-21
-PKG_SOURCE_VERSION:=3b3d406ebc6f5dae6b5c9170c674183026e7301b
-PKG_MIRROR_HASH:=7c63da237c52808e1fe49458d5a4ac804a8eb4c365e26c6b2b709256e8fc041f
+PKG_VERSION:=2.14
+PKG_RELEASE:=1
+PKG_HASH:=14fb6101f2ef424ec84c0296c3cbdeb7f79b22f5fbb46529bea0e362d0fab0d5
 
 PKG_MAINTAINER:=Vladimir Vid <vladimir.vid@sartura.hr>
 
+include $(INCLUDE_DIR)/kernel.mk
+include $(INCLUDE_DIR)/trusted-firmware-a.mk
 include $(INCLUDE_DIR)/package.mk
 
-define Package/arm-trusted-firmware-mvebu
-  SECTION:=boot
-  CATEGORY:=Boot Loaders
-  TITLE:=ARM Trusted Firmware for mvebu devices
+define Trusted-Firmware-A/Default
+  BUILD_TARGET:=mvebu
+  BUILD_SUBTARGET:=cortexa53
+  TFA_IMAGE:=flash-image.bin uart-images.tgz.bin
+  UBOOT:=
+  DDR_TOPOLOGY:=
+  CLOCKSPRESET:=
 endef
 
-define Package/arm-trusted-firmware-mvebu/uDPU
-$(call Package/arm-trusted-firmware-mvebu)
-  BOARDNAME:=uDPU
-  TITLE:=ARM Trusted Firmware for Methode uDPU
-  DEPENDS:=+u-boot-uDPU
-  UBOOT:=uDPU
+
+define Trusted-Firmware-A/espressobin-512mb
+  NAME:=Marvell ESPRESSObin (512MB)
+  DEPENDS:=+u-boot-espressobin
+  BUILD_DEVICES:=globalscale_espressobin
+  UBOOT:=espressobin
+  DDR_TOPOLOGY:=0
   CLOCKSPRESET:=CPU_1000_DDR_800
   PLAT:=a3700
 endef
 
+define Trusted-Firmware-A/espressobin-v3-v5-1gb-1cs
+  NAME:=Marvell ESPRESSObin V3-V5 (1GB 1CS)
+  DEPENDS:=+u-boot-espressobin
+  BUILD_DEVICES:=globalscale_espressobin
+  UBOOT:=espressobin
+  DDR_TOPOLOGY:=4
+  CLOCKSPRESET:=CPU_1000_DDR_800
+  PLAT:=a3700
+endef
+
+define Trusted-Firmware-A/espressobin-v3-v5-1gb-2cs
+  NAME:=Marvell ESPRESSObin V3-V5 (1GB, 2CS)
+  DEPENDS:=+u-boot-espressobin
+  BUILD_DEVICES:=globalscale_espressobin
+  UBOOT:=espressobin
+  DDR_TOPOLOGY:=2
+  CLOCKSPRESET:=CPU_1000_DDR_800
+  PLAT:=a3700
+endef
+
+define Trusted-Firmware-A/espressobin-v3-v5-2gb
+  NAME:=Marvell ESPRESSObin V3-V5 (2GB)
+  DEPENDS:=+u-boot-espressobin
+  BUILD_DEVICES:=globalscale_espressobin
+  UBOOT:=espressobin
+  DDR_TOPOLOGY:=7
+  CLOCKSPRESET:=CPU_1000_DDR_800
+  PLAT:=a3700
+endef
+
+define Trusted-Firmware-A/espressobin-v7-1gb
+  NAME:=Marvell ESPRESSObin V7 (1GB)
+  DEPENDS:=+u-boot-espressobin
+  BUILD_DEVICES:=globalscale_espressobin-v7
+  UBOOT:=espressobin
+  DDR_TOPOLOGY:=5
+  CLOCKSPRESET:=CPU_1000_DDR_800
+  PLAT:=a3700
+endef
+
+define Trusted-Firmware-A/espressobin-v7-2gb
+  NAME:=Marvell ESPRESSObin V7 (2GB)
+  DEPENDS:=+u-boot-espressobin
+  BUILD_DEVICES:=globalscale_espressobin-v7
+  UBOOT:=espressobin
+  DDR_TOPOLOGY:=6
+  CLOCKSPRESET:=CPU_1000_DDR_800
+  PLAT:=a3700
+endef
+
+define Trusted-Firmware-A/udpu
+  NAME:=Methode uDPU
+  DEPENDS:=+u-boot-uDPU
+  BUILD_DEVICES:=methode_udpu
+  UBOOT:=uDPU
+  DDR_TOPOLOGY:=0
+  CLOCKSPRESET:=CPU_1000_DDR_800
+  PLAT:=a3700
+endef
+
+define Trusted-Firmware-A/edpu
+  NAME:=Methode eDPU
+  DEPENDS:=+u-boot-eDPU
+  BUILD_DEVICES:=methode_edpu
+  UBOOT:=eDPU
+  DDR_TOPOLOGY:=0
+  CLOCKSPRESET:=CPU_1000_DDR_800
+  PLAT:=a3700
+endef
+
+
+TFA_TARGETS:= \
+	espressobin-512mb \
+	espressobin-v3-v5-1gb-1cs \
+	espressobin-v3-v5-1gb-2cs \
+	espressobin-v3-v5-2gb \
+	espressobin-v7-1gb \
+	espressobin-v7-2gb \
+	udpu \
+	edpu
+
+TFA_MAKE_FLAGS += \
+		CROSS_CM3=$(BUILD_DIR)/$(CM3_GCC_NAME)-$(CM3_GCC_RELEASE)-$(CM3_GCC_VERSION)/bin/arm-none-eabi- \
+		BL33=$(STAGING_DIR_IMAGE)/$(UBOOT)-u-boot.bin \
+		MV_DDR_PATH=$(BUILD_DIR)/$(MV_DDR_NAME) \
+		WTP=$(BUILD_DIR)/$(A3700_UTILS_NAME) \
+		WTMI_IMG=$(BUILD_DIR)/$(MOX_BB_NAME)/wtmi_app.bin \
+		CRYPTOPP_PATH=$(BUILD_DIR)/$(CRYPTOPP_NAME) \
+		HOST_LDFLAGS="$(HOST_LDFLAGS)" \
+		HOST_CPPFLAGS="$(HOST_CPPFLAGS)" \
+		USE_COHERENT_MEM=0 \
+		FIP_ALIGN=0x100 \
+		DDR_TOPOLOGY=$(DDR_TOPOLOGY) \
+		CLOCKSPRESET=$(CLOCKSPRESET) \
+		A3700_UTILS_COMMIT_ID=$(A3700_UTILS_RELEASE) \
+		MV_DDR_COMMIT_ID=$(MV_DDR_RELEASE) \
+		all \
+		mrvl_flash \
+		mrvl_uart
+
 A3700_UTILS_NAME:=a3700-utils
-A3700_UTILS_RELEASE:=18.12.1
+A3700_UTILS_RELEASE:=a3e1c67b
 A3700_UTILS_SOURCE=$(A3700_UTILS_NAME)-$(A3700_UTILS_RELEASE).tar.bz2
 
 define Download/a3700-utils
   FILE:=$(A3700_UTILS_SOURCE)
   PROTO:=git
   URL:=https://github.com/MarvellEmbeddedProcessors/A3700-utils-marvell.git
-  VERSION:=e6bb176fb9936d9160e53ae09275000dc6440686
-  MIRROR_HASH:=c3edf71cbf1fc2e5482d36e36a34c79d682d2c87fdfb909b4dc6327a171e7bd4
+  SOURCE_VERSION:=a3e1c67bb378e1d8a938e1b826cb602af83628d2
+  MIRROR_HASH:=0e6b8ef6423dcb52a5e282669a8aeebc6eea2d45a7c3a2c9a2fc7a749b3275a7
   SUBDIR:=$(A3700_UTILS_NAME)
 endef
 
+CRYPTOPP_NAME:=cryptopp
+CRYPTOPP_RELEASE:=843d74c7
+CRYPTOPP_SOURCE=$(CRYPTOPP_NAME)-$(CRYPTOPP_RELEASE).tar.bz2
+
+define Download/cryptopp
+  FILE:=$(CRYPTOPP_SOURCE)
+  PROTO:=git
+  URL:=https://github.com/weidai11/cryptopp.git
+  SOURCE_VERSION:=843d74c7c97f9e19a615b8ff3c0ca06599ca501b
+  MIRROR_HASH:=6d58162a0527971cac09208b7fbef3c02a8186ecdb3c28e03aabe00085183309
+  SUBDIR:=$(CRYPTOPP_NAME)
+endef
+
 MV_DDR_NAME:=mv-ddr-marvell
-MV_DDR_RELEASE:=mainline
+MV_DDR_RELEASE:=7bcb9dc7
 MV_DDR_SOURCE:=$(MV_DDR_NAME)-$(MV_DDR_RELEASE).tar.bz2
 
 define Download/mv-ddr-marvell
   FILE:=$(MV_DDR_SOURCE)
   PROTO:=git
   URL:=https://github.com/MarvellEmbeddedProcessors/mv-ddr-marvell.git
-  VERSION:=a881467ef0f0185e6570dd0483023fde93cbb5f5
-  MIRROR_HASH:=19f34817616c583b2b5f2612705857cf2120f6c2132355217899b1403c3fd336
+  SOURCE_VERSION:=7bcb9dc7ea7fa233bf96bd0350a4ec7c205e342e
+  MIRROR_HASH:=2afd31932731c5d30378aca4bdcb15cd0d56028727767c21a1e6885e190e85c4
   SUBDIR:=$(MV_DDR_NAME)
 endef
 
-LINARO_NAME:=gcc-linaro
-LINARO_RELEASE:=6
-LINARO_VERSION:=5.0-2018.12-$(HOST_ARCH)_arm-linux-gnueabi
-LINARO_SOURCE=$(LINARO_NAME)-$(LINARO_RELEASE).$(LINARO_VERSION).tar.xz
+MOX_BB_NAME:=mox-boot-builder
+MOX_BB_RELEASE:=d6d9646a
+MOX_BB_SOURCE:=$(MOX_BB_NAME)-$(MOX_BB_RELEASE).tar.bz2
 
-define Download/gcc-linaro
-  FILE:=$(LINARO_SOURCE)
-  URL:=https://releases.linaro.org/components/toolchain/binaries/latest-$(LINARO_RELEASE)/arm-linux-gnueabi/
-  HASH:=2d4a92d6c8b384ae404b2e02c1c412e3ec18f9b714135acf046b2b1b510e9ace
+define Download/mox-boot-builder
+  FILE:=$(MOX_BB_SOURCE)
+  PROTO:=git
+  SUBMODULES:=skip
+  URL:=https://gitlab.nic.cz/turris/mox-boot-builder.git
+  SOURCE_VERSION:=d6d9646abea1f536f4c5cf29f592f94e7dafe05d
+  MIRROR_HASH:=6e7822b58040f803632868270097bba0b0dbc5a1f856e5e46c7e76b90a8eeb27
+  SUBDIR:=$(MOX_BB_NAME)
+endef
+
+CM3_GCC_NAME:=arm-gnu-toolchain
+CM3_GCC_RELEASE:=12.3.rel1
+CM3_GCC_VERSION:=$(HOST_ARCH)-arm-none-eabi
+CM3_GCC_SOURCE=$(CM3_GCC_NAME)-$(CM3_GCC_RELEASE)-$(CM3_GCC_VERSION).tar.xz
+
+define Download/cm3-gcc
+  FILE:=$(CM3_GCC_SOURCE)
+  URL:=https://developer.arm.com/-/media/Files/downloads/gnu/$(CM3_GCC_RELEASE)/binrel
+ifeq ($(HOST_ARCH),aarch64)
+  HASH:=14c0487d5753f6071d24e568881f7c7e67f80dd83165dec5164b3731394af431
+else
+  HASH:=12a2815644318ebcceaf84beabb665d0924b6e79e21048452c5331a56332b309
+endif
+endef
+
+define Build/Clean
+	rm -rf \
+		$(BUILD_DIR)/$(CRYPTOPP_NAME) \
+		$(BUILD_DIR)/$(A3700_UTILS_NAME) \
+		$(BUILD_DIR)/$(MV_DDR_NAME) \
+		$(BUILD_DIR)/$(MOX_BB_NAME) \
+		$(BUILD_DIR)/$(CM3_GCC_NAME)-$(CM3_GCC_RELEASE)-$(CM3_GCC_VERSION)
 endef
 
 define Build/Prepare
 	# Download sources
 	$(eval $(call Download,a3700-utils))
 	$(eval $(call Download,mv-ddr-marvell))
-	$(eval $(call Download,gcc-linaro))
+	$(eval $(call Download,mox-boot-builder))
+	$(eval $(call Download,cryptopp))
+	$(eval $(call Download,cm3-gcc))
 
-	rm -rf $(PKG_BUILD_DIR)
-	$(TAR) -C $(BUILD_DIR) -xf $(DL_DIR)/$(PKG_SOURCE)
+	$(call Build/Prepare/Default,)
 
-	mkdir -p $(STAGING_DIR_IMAGE)
-	$(TAR) -C $(STAGING_DIR_IMAGE) -xf $(DL_DIR)/$(A3700_UTILS_SOURCE)
-	$(TAR) -C $(STAGING_DIR_IMAGE) -xf $(DL_DIR)/$(MV_DDR_SOURCE)
-	$(TAR) -C $(STAGING_DIR_IMAGE) -xf $(DL_DIR)/$(LINARO_SOURCE)
+	$(TAR) -C $(BUILD_DIR) -xf $(DL_DIR)/$(CRYPTOPP_SOURCE)
+	$(TAR) -C $(BUILD_DIR) -xf $(DL_DIR)/$(A3700_UTILS_SOURCE)
+	$(call PatchDir/Default,$(BUILD_DIR)/$(A3700_UTILS_NAME),./patches-a3700-utils)
+	$(TAR) -C $(BUILD_DIR) -xf $(DL_DIR)/$(MV_DDR_SOURCE)
+	$(call PatchDir/Default,$(BUILD_DIR)/$(MV_DDR_NAME),./patches-mv-ddr-marvell)
+	$(TAR) -C $(BUILD_DIR) -xf $(DL_DIR)/$(MOX_BB_SOURCE)
+	$(call PatchDir/Default,$(BUILD_DIR)/$(MOX_BB_NAME),./patches-mox-boot-builder)
+	$(TAR) -C $(BUILD_DIR) -xf $(DL_DIR)/$(CM3_GCC_SOURCE)
 endef
 
-TARGET_CFLAGS = ""
-
-MAKE_VARS= \
-	CROSS_COMPILE="$(TARGET_CROSS)"
-
-MAKE_FLAGS = \
-	CROSS_CM3=$(STAGING_DIR_IMAGE)/$(LINARO_NAME)-$(LINARO_RELEASE).$(LINARO_VERSION)/bin/arm-linux-gnueabi- \
-	BL33=$(STAGING_DIR_IMAGE)/$(UBOOT)-u-boot.bin \
-	MV_DDR_PATH=$(STAGING_DIR_IMAGE)/$(MV_DDR_NAME) \
-	WTP=$(STAGING_DIR_IMAGE)/$(A3700_UTILS_NAME) \
-	CLOCKSPRESET=$(CLOCKSPRESET) \
-	PLAT=$(PLAT) \
-	all \
-	fip
-
-define Build/InstallDev
-	$(CP) $(PKG_BUILD_DIR)/build/$(PLAT)/release/flash-image.bin $(BIN_DIR)/u-boot-$(BOARDNAME)/
+define Build/Compile
+	+$(MAKE) \
+		CROSS_COMPILE=$(TARGET_CROSS) \
+		CROSS_CM3=$(BUILD_DIR)/$(CM3_GCC_NAME)-$(CM3_GCC_RELEASE)-$(CM3_GCC_VERSION)/bin/arm-none-eabi- \
+		WTMI_VERSION=$(MOX_BB_RELEASE) \
+		CRYPTOPP_PATH=$PWD/cryptopp/ \
+		-C $(BUILD_DIR)/$(MOX_BB_NAME) \
+		wtmi_app.bin
+	$(call Build/Compile/Default)
 endef
 
-$(eval $(call BuildPackage,arm-trusted-firmware-mvebu/uDPU))
+$(eval $(call BuildPackage/Trusted-Firmware-A))

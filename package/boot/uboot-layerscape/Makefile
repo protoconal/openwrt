@@ -8,13 +8,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=uboot-layerscape
-PKG_VERSION:=LSDK-20.04
-PKG_RELEASE:=2
+PKG_VERSION:=6.12.20.2.0.0
+PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://source.codeaurora.org/external/qoriq/qoriq-components/u-boot
-PKG_SOURCE_VERSION:=b0833bd0e26c059277f0673c9887b967f1ea5837
-PKG_MIRROR_HASH:=3cc01d4853ba56d9bcfe5366eddb5f664ae110741146d04f03434d38b4b5b0a0
+PKG_SOURCE_URL:=https://github.com/nxp-qoriq/u-boot
+PKG_SOURCE_VERSION:=lf-6.12.20-2.0.0
+PKG_MIRROR_HASH:=13594333aa3ee131d5832b4da88f73cf0744d98c28e90ad3e03594788c486e37
 
 include $(INCLUDE_DIR)/u-boot.mk
 include $(INCLUDE_DIR)/package.mk
@@ -30,19 +30,26 @@ endef
 define U-Boot/fsl_ls1012a-frdm
   NAME:=NXP LS1012AFRDM
   UBOOT_CONFIG:=ls1012afrdm_tfa
-  ENV_SIZE:=0x40000
 endef
 
 define U-Boot/fsl_ls1012a-rdb
   NAME:=NXP LS1012ARDB
   UBOOT_CONFIG:=ls1012ardb_tfa
-  ENV_SIZE:=0x40000
 endef
 
 define U-Boot/fsl_ls1012a-frwy-sdboot
   NAME:=NXP LS1012AFRWY
   UBOOT_CONFIG:=ls1012afrwy_tfa
-  ENV_SIZE:=0x10000
+endef
+
+define U-Boot/fsl_ls1028a-rdb
+  NAME:=NXP LS1028ARDB
+  UBOOT_CONFIG:=ls1028ardb_tfa
+endef
+
+define U-Boot/fsl_ls1028a-rdb-sdboot
+  NAME:=NXP LS1028ARDB SD Card Boot
+  UBOOT_CONFIG:=ls1028ardb_tfa
 endef
 
 define U-Boot/fsl_ls1043a-rdb
@@ -53,6 +60,16 @@ endef
 define U-Boot/fsl_ls1043a-rdb-sdboot
   NAME:=NXP LS1043ARDB SD Card Boot
   UBOOT_CONFIG:=ls1043ardb_tfa
+endef
+
+define U-Boot/fsl_ls1046a-frwy
+  NAME:=NXP LS1046AFRWY
+  UBOOT_CONFIG:=ls1046afrwy_tfa
+endef
+
+define U-Boot/fsl_ls1046a-frwy-sdboot
+  NAME:=NXP LS1046AFRWY SD Card Boot
+  UBOOT_CONFIG:=ls1046afrwy_tfa
 endef
 
 define U-Boot/fsl_ls1046a-rdb
@@ -78,6 +95,16 @@ endef
 define U-Boot/fsl_ls2088a-rdb
   NAME:=NXP LS2088ARDB
   UBOOT_CONFIG:=ls2088ardb_tfa
+endef
+
+define U-Boot/fsl_lx2160a-rdb
+  NAME:=NXP LX2160ARDB
+  UBOOT_CONFIG:=lx2160ardb_tfa
+endef
+
+define U-Boot/fsl_lx2160a-rdb-sdboot
+  NAME:=NXP LX2160ARDB SD Card Boot
+  UBOOT_CONFIG:=lx2160ardb_tfa
 endef
 
 define U-Boot/fsl_ls1021a-twr
@@ -107,16 +134,25 @@ UBOOT_TARGETS := \
   fsl_ls1012a-frdm \
   fsl_ls1012a-rdb \
   fsl_ls1012a-frwy-sdboot \
+  fsl_ls1028a-rdb \
+  fsl_ls1028a-rdb-sdboot \
   fsl_ls1043a-rdb \
   fsl_ls1043a-rdb-sdboot \
+  fsl_ls1046a-frwy \
+  fsl_ls1046a-frwy-sdboot \
   fsl_ls1046a-rdb \
   fsl_ls1046a-rdb-sdboot \
   fsl_ls1088a-rdb \
   fsl_ls1088a-rdb-sdboot \
   fsl_ls2088a-rdb \
+  fsl_lx2160a-rdb \
+  fsl_lx2160a-rdb-sdboot \
   fsl_ls1021a-twr \
   fsl_ls1021a-twr-sdboot \
   fsl_ls1021a-iot-sdboot
+
+UBOOT_CUSTOMIZE_CONFIG := \
+	--disable TOOLS_MKEFICAPSULE
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR_IMAGE)

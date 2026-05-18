@@ -7,34 +7,39 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mkimage
-PKG_VERSION:=2020.04
+PKG_VERSION:=2026.04
 
 PKG_SOURCE:=u-boot-$(PKG_VERSION).tar.bz2
 PKG_SOURCE_URL:= \
 	https://mirror.cyberbits.eu/u-boot \
-	https://ftp.denx.de/pub/u-boot \
-	ftp://ftp.denx.de/pub/u-boot
-PKG_HASH:=fe732aaf037d9cc3c0909bad8362af366ae964bbdac6913a34081ff4ad565372
+	https://ftp.denx.de/pub/u-boot
+PKG_HASH:=ac7c04b8b7004923b00a4e5d6699c5df4d21233bac9fda690d8cfbc209fff2fd
 
 HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/u-boot-$(PKG_VERSION)
 
 include $(INCLUDE_DIR)/host-build.mk
 
-define Host/Prepare
-	$(Host/Prepare/Default)
-	mkdir -p $(HOST_BUILD_DIR)/include/config
-	touch $(HOST_BUILD_DIR)/include/config/auto.conf
+define Host/Configure
+	$(MAKE) -C $(HOST_BUILD_DIR) \
+		HOSTCFLAGS="$(HOST_CFLAGS)" \
+		HOSTLDFLAGS="$(HOST_LDFLAGS)" \
+		PKG_CONFIG_EXTRAARGS="--static" \
+		V=$(if $(findstring c,$(OPENWRT_VERBOSE)),1) \
+		tools-only_defconfig
+
+	$(HOST_BUILD_DIR)/scripts/config \
+		--file $(HOST_BUILD_DIR)/.config \
+		--disable TOOLS_KWBIMAGE \
+		--disable TOOLS_LIBCRYPTO \
+		--disable TOOLS_MKEFICAPSULE
 endef
 
 define Host/Compile
 	$(MAKE) -C $(HOST_BUILD_DIR) \
 		HOSTCFLAGS="$(HOST_CFLAGS)" \
 		HOSTLDFLAGS="$(HOST_LDFLAGS)" \
-		no-dot-config-targets=tools-only \
-		CONFIG_MKIMAGE_DTC_PATH=dtc \
-		CONFIG_FIT=y \
-		CONFIG_FIT_SIGNATURE=y \
-		CONFIG_FIT_SIGNATURE_MAX_SIZE=0x10000000 \
+		PKG_CONFIG_EXTRAARGS="--static" \
+		V=$(if $(findstring c,$(OPENWRT_VERBOSE)),1) \
 		tools-only
 endef
 

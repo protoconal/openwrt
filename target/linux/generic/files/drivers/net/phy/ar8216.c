@@ -23,7 +23,7 @@
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
 #include <linux/netlink.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
 #include <linux/of_mdio.h>
 #include <linux/of_net.h>
 #include <linux/bitops.h>
@@ -33,9 +33,7 @@
 #include <linux/phy.h>
 #include <linux/etherdevice.h>
 #include <linux/lockdep.h>
-#include <linux/ar8216_platform.h>
 #include <linux/workqueue.h>
-#include <linux/version.h>
 
 #include "ar8216.h"
 
@@ -513,6 +511,8 @@ ar8216_read_port_link(struct ar8xxx_priv *priv, int port,
 	}
 }
 
+#ifdef CONFIG_ETHERNET_PACKET_MANGLE
+
 static struct sk_buff *
 ar8216_mangle_tx(struct net_device *dev, struct sk_buff *skb)
 {
@@ -578,6 +578,8 @@ ar8216_mangle_rx(struct net_device *dev, struct sk_buff *skb)
 	buf[14 + 2] |= vlan >> 8;
 	buf[15 + 2] = vlan & 0xff;
 }
+
+#endif
 
 int
 ar8216_wait_bit(struct ar8xxx_priv *priv, int reg, u32 mask, u32 val)
@@ -887,7 +889,7 @@ ar8216_phy_write(struct ar8xxx_priv *priv, int addr, int regnum, u16 val)
 static int
 ar8229_hw_init(struct ar8xxx_priv *priv)
 {
-	int phy_if_mode;
+	phy_interface_t phy_if_mode;
 
 	if (priv->initialized)
 		return 0;
@@ -895,7 +897,7 @@ ar8229_hw_init(struct ar8xxx_priv *priv)
 	ar8xxx_write(priv, AR8216_REG_CTRL, AR8216_CTRL_RESET);
 	ar8xxx_reg_wait(priv, AR8216_REG_CTRL, AR8216_CTRL_RESET, 0, 1000);
 
-	phy_if_mode = of_get_phy_mode(priv->pdev->of_node);
+	of_get_phy_mode(priv->pdev->of_node, &phy_if_mode);
 
 	if (phy_if_mode == PHY_INTERFACE_MODE_GMII) {
 		ar8xxx_write(priv, AR8229_REG_OPER_MODE0,
@@ -1415,8 +1417,7 @@ ar8xxx_sw_reset_switch(struct switch_dev *dev)
 	int i;
 
 	mutex_lock(&priv->reg_mutex);
-	memset(&priv->vlan, 0, sizeof(struct ar8xxx_priv) -
-		offsetof(struct ar8xxx_priv, vlan));
+	memset(&priv->ar8xxx_priv_volatile, 0, sizeof(priv->ar8xxx_priv_volatile));
 
 	for (i = 0; i < dev->vlans; i++)
 		priv->vlan_id[i] = i;
@@ -2421,7 +2422,9 @@ static int
 ar8xxx_phy_config_init(struct phy_device *phydev)
 {
 	struct ar8xxx_priv *priv = phydev->priv;
+#ifdef CONFIG_ETHERNET_PACKET_MANGLE
 	struct net_device *dev = phydev->attached_dev;
+#endif
 	int ret;
 
 	if (WARN_ON(!priv))
@@ -2449,6 +2452,7 @@ ar8xxx_phy_config_init(struct phy_device *phydev)
 	if (ret)
 		return ret;
 
+#ifdef CONFIG_ETHERNET_PACKET_MANGLE
 	/* VID fixup only needed on ar8216 */
 	if (chip_is_ar8216(priv)) {
 		dev->phy_ptr = priv;
@@ -2456,6 +2460,7 @@ ar8xxx_phy_config_init(struct phy_device *phydev)
 		dev->eth_mangle_rx = ar8216_mangle_rx;
 		dev->eth_mangle_tx = ar8216_mangle_tx;
 	}
+#endif
 
 	return 0;
 }
@@ -2496,10 +2501,7 @@ ar8xxx_phy_read_status(struct phy_device *phydev)
 	struct switch_port_link link;
 
 	/* check for switch port link changes */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
-	if (phydev->state == PHY_CHANGELINK)
-#endif
-		ar8xxx_check_link_states(priv);
+	ar8xxx_check_link_states(priv);
 
 	if (phydev->mdio.addr != 0)
 		return genphy_read_status(phydev);
@@ -2539,6 +2541,18 @@ ar8xxx_phy_config_aneg(struct phy_device *phydev)
 		return 0;
 
 	return genphy_config_aneg(phydev);
+}
+
+static int
+ar8xxx_get_features(struct phy_device *phydev)
+{
+	struct ar8xxx_priv *priv = phydev->priv;
+
+	linkmode_copy(phydev->supported, PHY_BASIC_FEATURES);
+	if (ar8xxx_has_gige(priv))
+		linkmode_set_bit(ETHTOOL_LINK_MODE_1000baseT_Full_BIT, phydev->supported);
+
+	return 0;
 }
 
 static const u32 ar8xxx_phy_ids[] = {
@@ -2638,44 +2652,14 @@ ar8xxx_phy_probe(struct phy_device *phydev)
 found:
 	priv->use_count++;
 
-	if (phydev->mdio.addr == 0) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
-		linkmode_zero(phydev->supported);
-		if (ar8xxx_has_gige(priv))
-			linkmode_set_bit(ETHTOOL_LINK_MODE_1000baseT_Full_BIT, phydev->supported);
-		else
-			linkmode_set_bit(ETHTOOL_LINK_MODE_100baseT_Full_BIT, phydev->supported);
-		linkmode_copy(phydev->advertising, phydev->supported);
-#else
-		if (ar8xxx_has_gige(priv)) {
-			phydev->supported = SUPPORTED_1000baseT_Full;
-			phydev->advertising = ADVERTISED_1000baseT_Full;
-		} else {
-			phydev->supported = SUPPORTED_100baseT_Full;
-			phydev->advertising = ADVERTISED_100baseT_Full;
-		}
-#endif
+	if (phydev->mdio.addr == 0 && priv->chip->config_at_probe) {
+		priv->phy = phydev;
 
-		if (priv->chip->config_at_probe) {
-			priv->phy = phydev;
-
-			ret = ar8xxx_start(priv);
-			if (ret)
-				goto err_unregister_switch;
-		}
-	} else {
-		if (ar8xxx_has_gige(priv)) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
-			linkmode_zero(phydev->supported);
-			linkmode_set_bit(ETHTOOL_LINK_MODE_1000baseT_Full_BIT, phydev->supported);
-			linkmode_copy(phydev->advertising, phydev->supported);
-#else
-			phydev->supported |= SUPPORTED_1000baseT_Full;
-			phydev->advertising |= ADVERTISED_1000baseT_Full;
-#endif
-		}
-		if (priv->chip->phy_rgmii_set)
-			priv->chip->phy_rgmii_set(priv, phydev);
+		ret = ar8xxx_start(priv);
+		if (ret)
+			goto err_unregister_switch;
+	} else if (priv->chip->phy_rgmii_set) {
+		priv->chip->phy_rgmii_set(priv, phydev);
 	}
 
 	phydev->priv = priv;
@@ -2705,10 +2689,12 @@ ar8xxx_phy_detach(struct phy_device *phydev)
 	if (!dev)
 		return;
 
+#ifdef CONFIG_ETHERNET_PACKET_MANGLE
 	dev->phy_ptr = NULL;
 	dev->priv_flags &= ~IFF_NO_IP_ALIGN;
 	dev->eth_mangle_rx = NULL;
 	dev->eth_mangle_tx = NULL;
+#endif
 }
 
 static void
@@ -2736,26 +2722,18 @@ ar8xxx_phy_remove(struct phy_device *phydev)
 	ar8xxx_free(priv);
 }
 
-static int
-ar8xxx_phy_soft_reset(struct phy_device *phydev)
-{
-	/* we don't need an extra reset */
-	return 0;
-}
-
 static struct phy_driver ar8xxx_phy_driver[] = {
 	{
 		.phy_id		= 0x004d0000,
 		.name		= "Atheros AR8216/AR8236/AR8316",
 		.phy_id_mask	= 0xffff0000,
-		.features	= PHY_BASIC_FEATURES,
 		.probe		= ar8xxx_phy_probe,
 		.remove		= ar8xxx_phy_remove,
 		.detach		= ar8xxx_phy_detach,
 		.config_init	= ar8xxx_phy_config_init,
 		.config_aneg	= ar8xxx_phy_config_aneg,
 		.read_status	= ar8xxx_phy_read_status,
-		.soft_reset	= ar8xxx_phy_soft_reset,
+		.get_features	= ar8xxx_get_features,
 	}
 };
 
@@ -2779,15 +2757,10 @@ static const struct of_device_id ar8xxx_mdiodev_of_match[] = {
 static int
 ar8xxx_mdiodev_probe(struct mdio_device *mdiodev)
 {
-	const struct of_device_id *match;
 	struct ar8xxx_priv *priv;
 	struct switch_dev *swdev;
 	struct device_node *mdio_node;
 	int ret;
-
-	match = of_match_device(ar8xxx_mdiodev_of_match, &mdiodev->dev);
-	if (!match)
-		return -EINVAL;
 
 	priv = ar8xxx_create();
 	if (priv == NULL)
@@ -2795,7 +2768,7 @@ ar8xxx_mdiodev_probe(struct mdio_device *mdiodev)
 
 	priv->mii_bus = mdiodev->bus;
 	priv->pdev = &mdiodev->dev;
-	priv->chip = (const struct ar8xxx_chip *) match->data;
+	priv->chip = of_device_get_match_data(&mdiodev->dev);
 
 	ret = of_property_read_u32(priv->pdev->of_node, "qca,mib-poll-interval",
 				   &priv->mib_poll_interval);
