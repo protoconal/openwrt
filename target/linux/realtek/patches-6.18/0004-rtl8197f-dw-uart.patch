@@ -1,0 +1,84 @@
+--- a/drivers/tty/serial/8250/8250_dw.c
++++ b/drivers/tty/serial/8250/8250_dw.c
+@@ -56,6 +56,7 @@
+ #define DW_UART_QUIRK_APMC0D08		BIT(4)
+ #define DW_UART_QUIRK_CPR_VALUE		BIT(5)
++#define DW_UART_QUIRK_RTL8197F		BIT(6)
+ 
+ struct dw8250_platform_data {
+ 	u8 usr_reg;
+@@ -77,6 +78,8 @@ struct dw8250_data {
+ 
+ 	unsigned int		skip_autocfg:1;
+ 	unsigned int		uart_16550_compatible:1;
++	u8			rtl_tx_rx_reg;
++	bool			adjlcr;
+ };
+ 
+ static inline struct dw8250_data *to_dw8250_data(struct dw8250_port_data *data)
+@@ -486,6 +487,30 @@ static void dw8250_rzn1_set_rx_dma(struct uart_8250_port *up,
+ 	dw8250_writel_ext(up, RZN1_UART_RDMACR, val);
+ }
+ 
++static void dw8250_rtl8197f_serial_out(struct uart_port *p, unsigned int offset,
++				       u32 value)
++{
++	struct dw8250_data *d = to_dw8250_data(p->private_data);
++
++	if (offset == UART_TX || offset == UART_RX)
++		offset = d->rtl_tx_rx_reg;
++	if (offset == UART_LCR && d->adjlcr &&
++	    (value == UART_LCR_WLEN7 || value == UART_LCR_WLEN8))
++		value -= 2;
++	writeb(value, p->membase + (offset << p->regshift));
++	dw8250_check_lcr(p, offset, value);
++}
++
++static u32 dw8250_rtl8197f_serial_in(struct uart_port *p, unsigned int offset)
++{
++	struct dw8250_data *d = to_dw8250_data(p->private_data);
++
++	if (offset == UART_TX || offset == UART_RX)
++		offset = d->rtl_tx_rx_reg;
++	return dw8250_modify_msr(p, offset,
++				 readb(p->membase + (offset << p->regshift)));
++}
++
+ static void dw8250_quirks(struct uart_port *p, struct dw8250_data *data)
+ {
+ 	unsigned int quirks = data->pdata->quirks;
+@@ -519,6 +544,15 @@ static void dw8250_quirks(struct uart_port *p, struct dw8250_data *data)
+ 		data->uart_16550_compatible = true;
+ 	}
++
++	if (quirks & DW_UART_QUIRK_RTL8197F) {
++		p->type = PORT_16550A;
++		p->flags = UPF_SKIP_TEST | UPF_FIXED_TYPE;
++		p->serial_in = dw8250_rtl8197f_serial_in;
++		p->serial_out = dw8250_rtl8197f_serial_out;
++		data->rtl_tx_rx_reg = 9;
++		data->adjlcr = true;
++		data->skip_autocfg = true;
++	}
+ }
+ 
+ static void dw8250_reset_control_assert(void *data)
+@@ -778,8 +806,14 @@ static const struct dw8250_platform_data dw8250_skip_set_rate_data = {
+ 	.quirks = DW_UART_QUIRK_SKIP_SET_RATE,
+ };
+ 
++static const struct dw8250_platform_data dw8250_rtl8197f_data = {
++	.usr_reg = DW_UART_USR,
++	.quirks = DW_UART_QUIRK_RTL8197F,
++};
++
+ static const struct of_device_id dw8250_of_match[] = {
+ 	{ .compatible = "snps,dw-apb-uart", .data = &dw8250_dw_apb },
+ 	{ .compatible = "cavium,octeon-3860-uart", .data = &dw8250_octeon_3860_data },
+ 	{ .compatible = "marvell,armada-38x-uart", .data = &dw8250_armada_38x_data },
+ 	{ .compatible = "renesas,rzn1-uart", .data = &dw8250_renesas_rzn1_data },
+ 	{ .compatible = "sophgo,sg2044-uart", .data = &dw8250_skip_set_rate_data },
+ 	{ .compatible = "starfive,jh7100-uart", .data = &dw8250_skip_set_rate_data },
++	{ .compatible = "realtek,rtl8197f-uart", .data = &dw8250_rtl8197f_data },
+ 	{ /* Sentinel */ }
+ };
