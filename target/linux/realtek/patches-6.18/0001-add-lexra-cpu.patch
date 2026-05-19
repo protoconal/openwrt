@@ -1,0 +1,353 @@
+--- a/arch/mips/Kconfig
++++ b/arch/mips/Kconfig
+@@ -85,8 +85,8 @@ config MIPS
+ 	select HAVE_MOD_ARCH_SPECIFIC
+ 	select HAVE_NMI
+ 	select HAVE_PAGE_SIZE_4KB if !CPU_LOONGSON2EF && !CPU_LOONGSON64
+-	select HAVE_PAGE_SIZE_16KB if !CPU_R3000
+-	select HAVE_PAGE_SIZE_64KB if !CPU_R3000
++	select HAVE_PAGE_SIZE_16KB if !CPU_R3000 && !CPU_RLX
++	select HAVE_PAGE_SIZE_64KB if !CPU_R3000 && !CPU_RLX
+ 	select HAVE_PERF_EVENTS
+ 	select HAVE_PERF_REGS
+ 	select HAVE_PERF_USER_STACK_DUMP
+@@ -1584,6 +1584,22 @@ config CPU_R3000
+ 	  might be a safe bet.  If the resulting kernel does not work,
+ 	  try to recompile with R3000.
+ 
++config CPU_RLX4181
++	bool "RLX4181"
++	depends on SYS_HAS_CPU_RLX4181
++	select CPU_SUPPORTS_32BIT_KERNEL
++	select CPU_SUPPORTS_HIGHMEM
++	select CPU_R3K_TLB
++	select CPU_RLX
++
++config CPU_RLX5281
++	bool "RLX5281"
++	depends on SYS_HAS_CPU_RLX5281
++	select CPU_SUPPORTS_32BIT_KERNEL
++	select CPU_SUPPORTS_HIGHMEM
++	select CPU_R3K_TLB
++	select CPU_RLX
++
+ config CPU_R4300
+ 	bool "R4300"
+ 	depends on SYS_HAS_CPU_R4300
+@@ -1841,6 +1857,12 @@ config SYS_SUPPORTS_ZBOOT_UART_PROM
+ 	bool
+ 	select SYS_SUPPORTS_ZBOOT
+ 
++config CPU_RLX
++	bool
++	select CPU_SUPPORTS_32BIT_KERNEL
++	select CPU_SUPPORTS_HIGHMEM
++	select CPU_R3K_TLB
++
+ config CPU_LOONGSON2EF
+ 	bool
+ 	select CPU_SUPPORTS_32BIT_KERNEL
+@@ -1923,6 +1945,12 @@ config SYS_HAS_CPU_R3000
+ 	bool
+ 
++config SYS_HAS_CPU_RLX4181
++	bool
++
++config SYS_HAS_CPU_RLX5281
++	bool
++
+ config SYS_HAS_CPU_R4300
+ 	bool
+ 
+@@ -2177,7 +2205,7 @@ config CPU_HAS_PREFETCH
+ 
+ config CPU_GENERIC_DUMP_TLB
+ 	bool
+-	default y if !CPU_R3000
++	default y if !(CPU_R3000 || CPU_RLX)
+ 
+ config MIPS_FP_SUPPORT
+ 	bool "Floating Point support" if EXPERT
+@@ -2204,7 +2232,7 @@ config CPU_R3K_TLB
+ config CPU_R4K_FPU
+ 	bool
+ 	depends on MIPS_FP_SUPPORT
+-	default y if !CPU_R2300_FPU
++	default y if !(CPU_R2300_FPU || CPU_RLX)
+ 
+ config CPU_R4K_CACHE_TLB
+ 	bool
+@@ -2421,7 +2449,7 @@ config CPU_MIPSR2_IRQ_EI
+ 
+ config CPU_HAS_SYNC
+ 	bool
+-	depends on !CPU_R3000
++	depends on !(CPU_R3000 || CPU_RLX4181)
+ 	default y
+ 
+ #
+@@ -2481,12 +2509,12 @@ config MIPS_ASID_SHIFT
+ 	int
+-	default 6 if CPU_R3000
++	default 6 if CPU_R3000 || CPU_RLX
+ 	default 0
+ 
+ config MIPS_ASID_BITS
+ 	int
+ 	default 0 if MIPS_ASID_BITS_VARIABLE
+-	default 6 if CPU_R3000
++	default 6 if CPU_R3000 || CPU_RLX
+ 	default 8
+ 
+ config MIPS_ASID_BITS_VARIABLE
+--- a/arch/mips/Makefile
++++ b/arch/mips/Makefile
+@@ -175,6 +175,9 @@ cflags-$(CONFIG_CPU_CAVIUM_OCTEON) += -m
+ cflags-$(CONFIG_CAVIUM_CN63XXP1) += -Wa,-mfix-cn63xxp1
+ cflags-$(CONFIG_CPU_BMIPS)	+= -march=mips32 -Wa,--trap
+ 
++cflags-$(CONFIG_CPU_RLX4181)	+= -march=lx4380
++cflags-$(CONFIG_CPU_RLX5281)	+= -march=lx5380
++
+ cflags-$(CONFIG_CPU_LOONGSON2E) += \
+ 			$(call cc-option,-march=loongson2e,-march=mips3) -Wa,--trap
+ cflags-$(CONFIG_CPU_LOONGSON2F) += \
+--- a/arch/mips/include/asm/cpu.h
++++ b/arch/mips/include/asm/cpu.h
+@@ -95,6 +95,16 @@
+ #define PRID_IMP_LOONGSON_64G	0xc000  /* Generic Loongson-2 and Loongson-3 */
+ 
++#define PRID_IMP_LX4180		0xc100
++#define PRID_IMP_LX4280		0xc200
++#define PRID_IMP_LX4189		0xc400
++#define PRID_IMP_LX5180		0xc500
++#define PRID_IMP_LX5280		0xc600
++#define PRID_IMP_LX8000		0xc700
++#define PRID_IMP_LX4380		0xcd00  /* Lexra LX4380 / RLX4181 */
++#define PRID_IMP_LX5380		0xdc00  /* Lexra LX5380 / RLX5281 */
++#define PRID_IMP_LX8380		0xce00
++
+ #define PRID_IMP_UNKNOWN	0xff00
+ 
+ /*
+@@ -297,6 +307,9 @@ enum cpu_type_enum {
+ 	CPU_R2000, CPU_R3000, CPU_R3000A, CPU_R3041, CPU_R3051, CPU_R3052,
+ 	CPU_R3081, CPU_R3081E,
+ 
++	/* Lexra / Realtek */
++	CPU_RLX4181, CPU_RLX5281,
++
+ 	/*
+ 	 * R4000 class processors
+ 	 */
+--- a/arch/mips/include/asm/cpu-features.h
++++ b/arch/mips/include/asm/cpu-features.h
+@@ -140,6 +140,9 @@
+ 	__res;								\
+ })
+ #endif
++#ifndef cpu_has_lexra_cache
++#define cpu_has_lexra_cache	0
++#endif
+ /* Don't override `cpu_has_fpu' to 1 or the "nofpu" option won't work.  */
+ #ifndef cpu_has_fpu
+ # ifdef CONFIG_MIPS_FP_SUPPORT
+--- a/arch/mips/include/asm/cpu-type.h
++++ b/arch/mips/include/asm/cpu-type.h
+@@ -103,6 +103,14 @@ static inline int __pure __get_cpu_type(
+ 	case CPU_R3081:
+ 	case CPU_R3081E:
+ #endif
+ 
++#ifdef CONFIG_SYS_HAS_CPU_RLX4181
++	case CPU_RLX4181:
++#endif
++
++#ifdef CONFIG_SYS_HAS_CPU_RLX5281
++	case CPU_RLX5281:
++#endif
++
+ #ifdef CONFIG_SYS_HAS_CPU_R4300
+ 	case CPU_R4300:
+ 	case CPU_R4310:
+--- a/arch/mips/include/asm/isadep.h
++++ b/arch/mips/include/asm/isadep.h
+@@ -10,7 +10,7 @@
+ #ifndef __ASM_ISADEP_H
+ #define __ASM_ISADEP_H
+ 
+-#if defined(CONFIG_CPU_R3000)
++#if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_RLX)
+ /*
+  * R2000 or R3000
+  */
+--- a/arch/mips/include/asm/mipsregs.h
++++ b/arch/mips/include/asm/mipsregs.h
+@@ -15,6 +15,10 @@
+ #include <asm/hazards.h>
+ #include <asm/isa-rev.h>
+ 
++#if defined(CONFIG_CPU_RLX)
++#include <asm/mach-realtek/lxregs.h>
++#endif
++
+ /*
+  * The following macros are especially useful for __asm__
+  * inline assembler.
+@@ -1837,8 +1841,13 @@ do {									\
+ #define read_c0_contextconfig()		__read_32bit_c0_register($4, 1)
+ #define write_c0_contextconfig(val)	__write_32bit_c0_register($4, 1, val)
+ 
++#if defined(CONFIG_CPU_RLX5281)
++#define read_c0_userlocal()	__read_32bit_lxc0_register($8)
++#define write_c0_userlocal(val) __write_32bit_lxc0_register($8, val)
++#else
+ #define read_c0_userlocal()	__read_ulong_c0_register($4, 2)
+ #define write_c0_userlocal(val) __write_ulong_c0_register($4, 2, val)
++#endif
+ 
+ #define read_c0_xcontextconfig()	__read_ulong_c0_register($4, 3)
+ #define write_c0_xcontextconfig(val)	__write_ulong_c0_register($4, 3, val)
+--- a/arch/mips/include/asm/stackframe.h
++++ b/arch/mips/include/asm/stackframe.h
+@@ -42,7 +42,7 @@
+ 	cfi_restore \reg \offset \docfi
+ 	.endm
+ 
+-#if defined(CONFIG_CPU_R3000)
++#if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_RLX)
+ #define STATMASK 0x3f
+ #else
+ #define STATMASK 0x1f
+@@ -352,7 +352,7 @@
+ 		cfi_ld	sp, PT_R29, \docfi
+ 		.endm
+ 
+-#if defined(CONFIG_CPU_R3000)
++#if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_RLX)
+ 
+ 		.macro	RESTORE_SOME docfi=0
+ 		.set	push
+@@ -481,7 +481,7 @@
+ 		.macro	KMODE
+ 		mfc0	t0, CP0_STATUS
+ 		li	t1, ST0_KERNEL_CUMASK | (STATMASK & ~1)
+-#if defined(CONFIG_CPU_R3000)
++#if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_RLX)
+ 		andi	t2, t0, ST0_IEP
+ 		srl	t2, 2
+ 		or	t0, t2
+--- a/arch/mips/kernel/entry.S
++++ b/arch/mips/kernel/entry.S
+@@ -100,7 +100,7 @@ restore_partial:		# restore partial frame
+ 	SAVE_AT
+ 	SAVE_TEMP
+ 	LONG_L	v0, PT_STATUS(sp)
+-#if defined(CONFIG_CPU_R3000)
++#if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_RLX)
+ 	and	v0, ST0_IEP
+ #else
+ 	and	v0, ST0_IE
+--- a/arch/mips/kernel/genex.S
++++ b/arch/mips/kernel/genex.S
+@@ -173,7 +173,7 @@ NESTED(handle_int, PT_SIZE, sp)
+ 	.set	push
+ 	.set	noat
+ 	mfc0	k0, CP0_STATUS
+-#if defined(CONFIG_CPU_R3000)
++#if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_RLX)
+ 	and	k0, ST0_IEP
+ 	bnez	k0, 1f
+ 
+@@ -655,7 +655,7 @@ isrdhwr:
+ 	get_saved_sp	/* k1 := current_thread_info */
+ 	.set	noreorder
+ 	MFC0	k0, CP0_EPC
+-#if defined(CONFIG_CPU_R3000)
++#if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_RLX)
+ 	ori	k1, _THREAD_MASK
+ 	xori	k1, _THREAD_MASK
+ 	LONG_L	v1, TI_TP_VALUE(k1)
+--- a/arch/mips/kernel/Makefile
++++ b/arch/mips/kernel/Makefile
+@@ -44,6 +44,7 @@ obj-$(CONFIG_FUNCTION_TRACER)	+= mcount.
+ 
+ sw-y				:= r4k_switch.o
+ sw-$(CONFIG_CPU_R3000)		:= r2300_switch.o
++sw-$(CONFIG_CPU_RLX)		:= r2300_switch.o
+ sw-$(CONFIG_CPU_CAVIUM_OCTEON)	:= octeon_switch.o
+ obj-y				+= $(sw-y)
+ 
+--- a/arch/mips/kernel/cpu-r3k-probe.c
++++ b/arch/mips/kernel/cpu-r3k-probe.c
+@@ -114,6 +114,25 @@ void cpu_probe(void)
+ 		if (__cpu_has_fpu())
+ 			c->options |= MIPS_CPU_FPU;
+ 		c->tlbsize = 64;
+ 		break;
++
++	case PRID_COMP_LEXRA | PRID_IMP_LX4380:
++	case PRID_COMP_LEXRA | PRID_IMP_LX5380:
++		/* Lexra Processors */
++		c->options = MIPS_CPU_TLB | MIPS_CPU_NOFPUEX;
++		c->ases = MIPS_ASE_MIPS16;
++		c->tlbsize = 32;
++		switch (c->processor_id & PRID_IMP_MASK) {
++		case PRID_IMP_LX4380:
++			c->cputype = CPU_RLX4181;
++			__cpu_name[cpu] = "Lexra LX4380 / RLX4181";
++			break;
++		case PRID_IMP_LX5380:
++			c->cputype = CPU_RLX5281;
++			c->options |= MIPS_CPU_LLSC;
++			__cpu_name[cpu] = "Lexra LX5380 / RLX5281";
++			break;
++		}
++		break;
+ 	}
+ 
+ 	BUG_ON(!__cpu_name[cpu]);
+--- a/arch/mips/kernel/process.c
++++ b/arch/mips/kernel/process.c
+@@ -142,7 +142,7 @@ int copy_thread(struct task_struct *p, c
+ 		p->thread.reg16 = (unsigned long)args->fn;
+ 		p->thread.reg17 = (unsigned long)args->fn_arg;
+ 		p->thread.reg29 = childksp;
+ 		p->thread.reg31 = (unsigned long) ret_from_kernel_thread;
+-#if defined(CONFIG_CPU_R3000)
++#if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_RLX)
+ 		status = (status & ~(ST0_KUP | ST0_IEP | ST0_IEC)) |
+ 			 ((status & (ST0_KUC | ST0_IEC)) << 2);
+ #else
+--- a/arch/mips/lib/Makefile
++++ b/arch/mips/lib/Makefile
+@@ -13,6 +13,7 @@ lib-$(CONFIG_GENERIC_CSUM)	:= $(filter-o
+ obj-$(CONFIG_CPU_GENERIC_DUMP_TLB) += dump_tlb.o
+ obj-$(CONFIG_CPU_R3000)		+= r3k_dump_tlb.o
++obj-$(CONFIG_CPU_RLX)		+= r3k_dump_tlb.o
+ 
+ # libgcc-style stuff needed in the kernel
+ obj-y += bswapsi.o bswapdi.o multi3.o
+--- a/arch/mips/mm/Makefile
++++ b/arch/mips/mm/Makefile
+@@ -35,6 +35,7 @@ obj-$(CONFIG_CPU_R3K_TLB)	+= tlb-r3k.o
+ obj-$(CONFIG_CPU_R4K_CACHE_TLB) += c-r4k.o cex-gen.o tlb-r4k.o
+ obj-$(CONFIG_CPU_R3000)		+= c-r3k.o
++obj-$(CONFIG_CPU_RLX)		+= c-lexra.o
+ obj-$(CONFIG_CPU_SB1)		+= c-r4k.o cerr-sb1.o cex-sb1.o tlb-r4k.o
+ obj-$(CONFIG_CPU_CAVIUM_OCTEON) += c-octeon.o cex-oct.o tlb-r4k.o
+ 
+--- a/arch/mips/mm/cache.c
++++ b/arch/mips/mm/cache.c
+@@ -210,6 +210,12 @@ void cpu_cache_init(void)
+ 	if (IS_ENABLED(CONFIG_CPU_CAVIUM_OCTEON) && cpu_has_octeon_cache)
+ 		octeon_cache_init();
+ 
++	if (IS_ENABLED(CONFIG_CPU_RLX) && cpu_has_lexra_cache) {
++		extern void __weak lexra_cache_init(void);
++
++		lexra_cache_init();
++	}
++
+ 	setup_protection_map();
+ }

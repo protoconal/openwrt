@@ -1,0 +1,51 @@
+--- a/arch/mips/Kbuild.platforms
++++ b/arch/mips/Kbuild.platforms
+@@ -22,6 +22,7 @@ platform-$(CONFIG_PIC32MZDA)		+= pic32/
+ platform-$(CONFIG_RALINK)		+= ralink/
++platform-$(CONFIG_REALTEK)		+= realtek/
+ platform-$(CONFIG_MIKROTIK_RB532)	+= rb532/
+ platform-$(CONFIG_SGI_IP22)		+= sgi-ip22/
+ platform-$(CONFIG_SGI_IP27)		+= sgi-ip27/
+--- a/arch/mips/Kconfig
++++ b/arch/mips/Kconfig
+@@ -695,6 +695,22 @@ config RALINK
+ 	select ARCH_HAS_RESET_CONTROLLER
+ 	select RESET_CONTROLLER
+ 
++config REALTEK
++	bool "Realtek RTL8xxx MIPS boards"
++	select DMA_NONCOHERENT
++	select IRQ_MIPS_CPU
++	select SYS_HAS_CPU_RLX4181
++	select SYS_HAS_CPU_RLX5281
++	select SYS_HAS_CPU_MIPS32_R1
++	select SYS_HAS_CPU_MIPS32_R2
++	select SYS_SUPPORTS_32BIT_KERNEL
++	select SYS_SUPPORTS_LITTLE_ENDIAN
++	select BOOT_RAW
++	help
++	  Support for Realtek RTL819x MIPS-based boards.
++
+ config MACH_REALTEK_RTL
+ 	bool "Realtek RTL838x/RTL839x based machines"
+ 	select MIPS_GENERIC
+@@ -1072,6 +1088,7 @@ source "arch/mips/econet/Kconfig"
+ source "arch/mips/generic/Kconfig"
+ source "arch/mips/ingenic/Kconfig"
+ source "arch/mips/jazz/Kconfig"
+ source "arch/mips/lantiq/Kconfig"
+ source "arch/mips/mobileye/Kconfig"
+ source "arch/mips/pic32/Kconfig"
+ source "arch/mips/ralink/Kconfig"
++source "arch/mips/realtek/Kconfig"
+ source "arch/mips/sgi-ip27/Kconfig"
+ source "arch/mips/sibyte/Kconfig"
+ source "arch/mips/txx9/Kconfig"
+--- a/arch/mips/boot/dts/Makefile
++++ b/arch/mips/boot/dts/Makefile
+@@ -16,7 +16,7 @@ subdir-$(CONFIG_MACH_PIC32)		+= pic32
+ subdir-$(CONFIG_ATH79)			+= qca
+ subdir-$(CONFIG_RALINK)			+= ralink
+-subdir-$(CONFIG_MACH_REALTEK_RTL)	+= realtek
++subdir-$(CONFIG_MACH_REALTEK_RTL)$(CONFIG_REALTEK)	+= realtek
+ subdir-$(CONFIG_FIT_IMAGE_FDT_XILFPGA)	+= xilfpga
