@@ -1,0 +1,36 @@
+--- a/drivers/spi/Kconfig
++++ b/drivers/spi/Kconfig
+@@ -900,6 +900,22 @@ config SPI_REALTEK_SNAND
+ 	  This driver does not support generic SPI. The implementation
+ 	  only supports the spi-mem interface.
+ 
++config SPI_REALTEK
++	tristate "Realtek RTL819x SPI controller"
++	depends on REALTEK || COMPILE_TEST
++	help
++	  This enables support for the SPI controller on Realtek RTL819x
++	  MIPS-based SoCs (rtl8196e, rtl8197d).
++
++	  If unsure, say N.
++
++config SPI_SHEIPA
++	tristate "Sheipa RTL8197F SPI controller"
++	depends on REALTEK || COMPILE_TEST
++	help
++	  This enables support for the SPI controller on Realtek RTL8197F
++	  SoCs (Sheipa-style register interface).
++
++	  If unsure, say N.
++
+ config SPI_ROCKCHIP
+ 	tristate "Rockchip SPI controller driver"
+ 	depends on ARCH_ROCKCHIP || COMPILE_TEST
+--- a/drivers/spi/Makefile
++++ b/drivers/spi/Makefile
+@@ -126,6 +126,8 @@ obj-$(CONFIG_SPI_RB4XX)			+= spi-rb4xx.o
+ obj-$(CONFIG_MACH_REALTEK_RTL)		+= spi-realtek-rtl.o
+ obj-$(CONFIG_SPI_REALTEK_SNAND)		+= spi-realtek-rtl-snand.o
++obj-$(CONFIG_SPI_REALTEK)		+= spi-realtek.o
++obj-$(CONFIG_SPI_SHEIPA)		+= spi-sheipa.o
+ obj-$(CONFIG_SPI_RPCIF)			+= spi-rpc-if.o
+ obj-$(CONFIG_SPI_RSPI)			+= spi-rspi.o
